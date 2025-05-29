@@ -1,0 +1,17 @@
+{
+  "name": "testeboleto",
+  "version": "1.0.0",
+  "description": "",
+  "main": "teste_boleto.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "html-pdf": "^3.0.1",
+    "moment": "^2.30.1",
+    "node-boleto": "^2.3.0"
+  }
+}

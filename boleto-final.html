@@ -1,0 +1,643 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Visualização de boleto</title>
+    <meta name="robots" content="noindex" />
+    <meta name="format-detection" content="telephone=no" />
+    <style media="screen, print" type="text/css">
+      body {
+        color: #000000;
+        background-color: #ffffff;
+        margin-top: 0;
+        margin-right: 0;
+      }
+
+      * {
+        margin: 0px;
+        padding: 0px;
+      }
+      table {
+        border: 0;
+        border-collapse: collapse;
+        padding: 0;
+      }
+
+      img {
+        border: 0;
+      }
+
+      .cp {
+        font: bold 10px arial;
+        color: black;
+      }
+      .ti {
+        font: 9px arial, helvetica, sans-serif;
+      }
+      .ld {
+        font: bold 15px arial;
+        color: #000000;
+      }
+      .ct {
+        font: 9px "arial narrow";
+        color: #000033;
+      }
+      .cn {
+        font: 9px arial;
+        color: black;
+      }
+      .bc {
+        font: bold 22px arial;
+        color: #000000;
+      }
+
+      .cut {
+        width: 665px;
+        height: 1px;
+        border-top: dashed 1px #000;
+      }
+      .Ac {
+        text-align: center;
+      }
+      .Ar {
+        text-align: right;
+      }
+      .Al {
+        text-align: left;
+      }
+      .At {
+        vertical-align: top;
+      }
+      .Ab {
+        vertical-align: bottom;
+      }
+      .ct td,
+      .cp td {
+        padding-left: 6px;
+        border-left: solid 1px #000;
+      }
+      .cpN {
+        font: bold 10px arial;
+        color: black;
+      }
+      .ctN {
+        font: 9px "arial narrow";
+        color: #000033;
+      }
+      .pL0 {
+        padding-left: 0px;
+      }
+      .pL6 {
+        padding-left: 6px;
+      }
+      .pL10 {
+        padding-left: 10px;
+      }
+      .imgLogo {
+        width: 150px;
+      }
+      .imgLogo img {
+        width: 150px;
+        height: 40px;
+      }
+      .barra {
+        width: 2px;
+        height: 15px;
+        background-color: #000;
+      }
+      .rBb td {
+        border-bottom: solid 1px #000;
+      }
+      .BB {
+        border-bottom: solid 1px #000;
+      }
+      .BL {
+        border-left: solid 1px #000;
+      }
+      .BR {
+        border-right: solid 1px #000;
+      }
+      .BT1 {
+        border-top: dashed 1px #000;
+      }
+      .BT2 {
+        border-top: solid 2px #000;
+      }
+      .h1 {
+        height: 1px;
+      }
+      .h13 {
+        height: 13px;
+      }
+      .h12 {
+        height: 12px;
+      }
+      .h13 td {
+        vertical-align: top;
+      }
+      .h12 td {
+        vertical-align: top;
+      }
+      .w6 {
+        width: 6px;
+      }
+      .w7 {
+        width: 7px;
+      }
+      .w34 {
+        width: 34px;
+      }
+      .w45 {
+        width: 45px;
+      }
+      .w53 {
+        width: 53px;
+      }
+      .w62 {
+        width: 62px;
+      }
+      .w65 {
+        width: 65px;
+      }
+      .w72 {
+        width: 72px;
+      }
+      .w83 {
+        width: 83px;
+      }
+      .w88 {
+        width: 88px;
+      }
+      .w104 {
+        width: 104px;
+      }
+      .w105 {
+        width: 105px;
+      }
+      .w106 {
+        width: 106px;
+      }
+      .w113 {
+        width: 113px;
+      }
+      .w112 {
+        width: 112px;
+      }
+      .w123 {
+        width: 123px;
+      }
+      .w126 {
+        width: 126px;
+      }
+      .w128 {
+        width: 128px;
+      }
+      .w132 {
+        width: 132px;
+      }
+      .w134 {
+        width: 134px;
+      }
+      .w150 {
+        width: 150px;
+      }
+      .w163 {
+        width: 163px;
+      }
+      .w164 {
+        width: 164px;
+      }
+      .w180 {
+        width: 180px;
+      }
+      .w182 {
+        width: 182px;
+      }
+      .w186 {
+        width: 186px;
+      }
+      .w192 {
+        width: 192px;
+      }
+      .w250 {
+        width: 250px;
+      }
+      .w298 {
+        width: 298px;
+      }
+      .w409 {
+        width: 409px;
+      }
+      .w472 {
+        width: 472px;
+      }
+      .w478 {
+        width: 478px;
+      }
+      .w500 {
+        width: 500px;
+      }
+      .w544 {
+        width: 544px;
+      }
+      .w564 {
+        width: 564px;
+      }
+      .w659 {
+        width: 659px;
+      }
+      .w666 {
+        width: 666px;
+      }
+      .w667 {
+        width: 667px;
+      }
+      .BHead td {
+        border-bottom: solid 2px #000;
+      }
+      .EcdBar {
+        height: 50px;
+        vertical-align: bottom;
+      }
+      .rc6 td {
+        vertical-align: top;
+        border-bottom: solid 1px #000;
+        border-left: solid 1px #000;
+      }
+      .rc6 div {
+        padding-left: 6px;
+      }
+      .rc6 .t {
+        font: 9px "arial narrow";
+        color: #000033;
+        height: 13px;
+      }
+      .rc6 .c {
+        font: bold 10px arial;
+        color: black;
+        height: 12px;
+      }
+      .mt23 {
+        margin-top: 23px;
+      }
+      .pb4 {
+        padding-bottom: 14px;
+      }
+      .ebc {
+        width: 4px;
+        height: 440px;
+        border-right: dotted 1px #000000;
+        margin-right: 4px;
+      }
+
+      .barcode {
+        height: 50px;
+      }
+
+      .barcode-line {
+        height: inherit;
+        display: inline-block;
+        float: left;
+      }
+
+      @media print {
+        * {
+          -webkit-print-color-adjust: exact;
+        }
+        .no-print,
+        .no-print * {
+          display: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <table class="w666">
+        <tr class="cpN">
+          <td class="At Ac">Instruções de Impressão</td>
+        </tr>
+        <tr class="ti">
+          <td class="At Ac">
+            Imprimir em impressora jato de tinta (ink jet) ou laser em qualidade
+            normal. (Não use modo econômico).<br />Utilize folha A4 (210 x 297
+            mm) ou Carta (216 x 279 mm) - Corte na linha indicada<br />
+          </td>
+        </tr>
+        <tr class="ti">
+          <td class="At Ac">
+            <br />
+            <form>
+              <input
+                class="no-print"
+                type="button"
+                value="Clique aqui para imprimir"
+                onclick="window.print();return false;"
+              />
+            </form>
+          </td>
+        </tr>
+      </table>
+      <br />
+      <table class="w666">
+        <tr>
+          <td class="ctN cut" />
+        </tr>
+        <tr>
+          <td class="cpN Ar">Recibo do Pagador</td>
+        </tr>
+      </table>
+      <br />
+      <table class="w666">
+        <tr class="BHead">
+          <td class="imgLogo Al">
+            <img src="https://assets.pagar.me/boleto/images/bradesco.jpg" />
+          </td>
+          <td class="barra"></td>
+          <td class="w72 Ab bc Ac">237-2</td>
+          <td class="barra"></td>
+          <td class="w500 Ar Ab ld" id="linha-digitavel-1">23792.85600 95007.000011 41022.265205 1 10000000010000</td>
+        </tr>
+      </table>
+      <table class="w666">
+        <tr class="ct h13 At">
+          <td class="w298">Beneficiário</td>
+          <td class="w126">Agência / Código do Beneficiário</td>
+          <td class="w34">Moeda</td>
+          <td class="w45">Quantidade</td>
+          <td class="w128">Carteira / Nosso número</td>
+        </tr>
+        <tr class="cp h12 At rBb">
+          <td id="nome-beneficiario">LOXJYMI LUJOYMUO</td>
+          <td>1172/469</td>
+          <td id="moeda">R$</td>
+          <td></td>
+          <td class="Ar" id="nosso-numero">50070000141</td>
+        </tr>
+      </table>
+      <table class="w666">
+        <tr class="ct h13">
+          <td class="w192">Número do documento</td>
+          <td class="w132">CPF/CNPJ</td>
+          <td class="w134">Vencimento</td>
+          <td class="w180">Valor documento</td>
+        </tr>
+        <tr class="cp h12 rBb">
+          <td>000001234</td>
+          <td id="cnpj-beneficiario">031759488000055</td>
+          <td id="vencimento">22/02/2025</td>
+          <td class="Ar" id="valor">R$ 100,00</td>
+        </tr>
+      </table>
+      <table class="w666">
+        <tr class="ct h13">
+          <td class="w113">(-) Desconto / Abatimentos</td>
+          <td class="w112">(-) Outras deduções</td>
+          <td class="w113">(+) Mora / Multa</td>
+          <td class="w113">(+) Outros acréscimos</td>
+          <td class="w180">(=) Valor cobrado</td>
+        </tr>
+        <tr class="cp h12 rBb Ab">
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td class="Ar">&nbsp;</td>
+        </tr>
+      </table>
+      <table class="w666">
+        <tr class="ct h13">
+          <td class="w659">Pagador</td>
+        </tr>
+        <tr class="cp h12">
+          <td id="endereco-pagador">Teste<br />Teste<br />Teste<br />Teste - SP - CEP: 00000-000</td>
+        </tr>
+        <tr class="cp h12 rBb">
+          <td></td>
+        </tr>
+      </table>
+      <table class="w666">
+        <tr class="ctN h13">
+          <td class="pL6">Instruções</td>
+          <td class="w180 Ar">Autenticação mecânica</td>
+        </tr>
+        <tr class="cpN h12">
+          <td class="pL6"></td>
+          <td class="pL6 Ar"></td>
+        </tr>
+      </table>
+      <table class="ctN w666">
+        <tr class="h13">
+          <td />
+        </tr>
+        <tr class="h13">
+          <td />
+        </tr>
+        <tr>
+          <td class="Ar">Corte na linha pontilhada</td>
+        </tr>
+        <tr>
+          <td class="cut" />
+        </tr>
+        <tr class="h13">
+          <td />
+        </tr>
+        <tr class="h13">
+          <td />
+        </tr>
+      </table>
+      <table class="w666">
+        <tr class="BHead">
+          <td class="imgLogo Al">
+            <img src="https://assets.pagar.me/boleto/images/bradesco.jpg" />
+          </td>
+          <td class="barra"></td>
+          <td class="w72 Ab bc Ac">237-2</td>
+          <td class="barra"></td>
+          <td class="w500 Ar Ab ld" id="linha-digitavel-2">23792.85600 95007.000011 41022.265205 1 10000000010000</td>
+        </tr>
+      </table>
+      <table class="w666">
+        <tr class="ct h13">
+          <td class="w472">Local de pagamento</td>
+          <td class="w180">Vencimento</td>
+        </tr>
+        <tr class="cp h12 rBb">
+          <td>Até o vencimento, preferencialmente no Banco Bradesco</td>
+          <td class="Ar" id="vencimento">22/02/2025</td>
+        </tr>
+      </table>
+      <table class="w666">
+        <tr class="ct h13">
+          <td class="w472">Beneficiário</td>
+          <td class="w180">Agência / Código beneficiário</td>
+        </tr>
+        <tr class="cp h12 rBb">
+          <td id="nome-beneficiario">LOXJYMI LUJOYMUO</td>
+          <td class="Ar">1172/469</td>
+        </tr>
+      </table>
+      <table class="w666">
+        <tr class="ct h13">
+          <td class="w113">Data do documento</td>
+          <td class="w163">N<u>o</u> documento</td>
+          <td class="w62">Espécie doc.</td>
+          <td class="w34">Aceite</td>
+          <td class="w72">Data processamento</td>
+          <td class="w180">Carteira / Nosso número</td>
+        </tr>
+        <tr class="cp h12 rBb">
+          <td id="data-emissao">01/01/2025</td>
+          <td>000001234</td>
+          <td id="especie-doc">CH</td>
+          <td id="aceite">N</td>
+          <td id="data-emissao">01/01/2025</td>
+          <td class="Ar" id="nosso-numero">50070000141</td>
+        </tr>
+      </table>
+      <table class="w666">
+        <tr class="ct h13">
+          <td class="w72">Uso do banco</td>
+          <td class="w33">CIP</td>
+          <td class="w83">Carteira</td>
+          <td class="w53">Moeda</td>
+          <td class="w123">Quantidade</td>
+          <td class="w72">(x) Valor</td>
+          <td class="w180">(=) Valor documento</td>
+        </tr>
+        <tr class="cp h12 rBb">
+          <td>&nbsp;</td>
+          <td class="Al"></td>
+          <td class="Al" id="carteira">9</td>
+          <td class="Al" id="moeda">R$</td>
+          <td></td>
+          <td></td>
+          <td class="Ar" id="valor">R$ 100,00</td>
+        </tr>
+      </table>
+      <table class="w666">
+        <tr class="rc6">
+          <td class="w478">
+            <div class="ctN pL10">
+              Instruções (Texto de responsabilidade do beneficiário)
+            </div>
+            <div class="cpN pL10"></div>
+          </td>
+          <td class="w186">
+            <div class="t">(-) Desconto / Abatimentos</div>
+            <div class="c BB"></div>
+            <div class="t">(-) Outras deduções</div>
+            <div class="c BB"></div>
+            <div class="t">(+) Mora / Multa</div>
+            <div class="c BB"></div>
+            <div class="t">(+) Outros acréscimos</div>
+            <div class="c BB"></div>
+            <div class="t">(=) Valor cobrado</div>
+            <div class="c"></div>
+          </td>
+        </tr>
+      </table>
+      <table class="w666">
+        <tr class="ct h13">
+          <td class="w659">Pagador</td>
+        </tr>
+        <tr class="cp h12">
+          <td class="At" id="endereco-pagador">Teste<br />Teste<br />Teste<br />Teste - SP - CEP: 00000-000</td>
+        </tr>
+      </table>
+      <table class="w666">
+        <tr class="rBb">
+          <td class="w478 BL">
+            <div class="cpN pL6"></div>
+          </td>
+          <td class="Ab BL">
+            <div class="ctN pL6">Cód. baixa</div>
+          </td>
+        </tr>
+      </table>
+      <table class="w666 ctN">
+        <tr>
+          <td class="pL6 w409">Sacador / Avalista</td>
+          <td class="w250 Ar">
+            Autenticação mecânica - <b class="cpN">Ficha de Compensação</b>
+          </td>
+        </tr>
+        <tr class="h13">
+          <td colspan="3" />
+        </tr>
+      </table>
+      <table class="w666">
+        <tr>
+          <td class="EcdBar Al pL10">
+            <div class="barcode"><img src="data:image/svg+xml;charset=utf-8;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4NCjwhRE9DVFlQRSBzdmcNCiAgUFVCTElDICctLy9XM0MvL0RURCBTVkcgMS4xLy9FTicNCiAgJ2h0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCc+DQo8c3ZnIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB3aWR0aD0iMTkzLjA1MG1tIiBoZWlnaHQ9IjIyLjAwMG1tIj4NCiAgICA8IS0tQXV0b2dlbmVyYXRlZCB3aXRoIHB5dGhvbi1iYXJjb2RlIDAuMTUuMS0tPg0KICAgIDxnIGlkPSJiYXJjb2RlX2dyb3VwIj4NCiAgICAgICAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgc3R5bGU9ImZpbGw6d2hpdGUiLz4NCiAgICAgICAgPHJlY3QgeD0iNi40MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjAuNTAwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSI3LjQwMG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMC41MDBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjguNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTAuMTUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTIuNjUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTMuNjUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTQuNjUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTYuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTcuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTkuMTUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMjAuMTUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMjIuNjUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMjQuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMjYuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMjcuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMjguOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMjkuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMzIuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMzMuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMzQuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMzYuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMzkuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNDAuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNDEuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNDIuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNDQuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNDcuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNDguNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNDkuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNTAuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNTIuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNTUuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNTYuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNTcuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNTguNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNjAuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNjMuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNjQuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNjYuMTUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNjcuMTUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNjguOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNzAuNjUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNzIuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNzMuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNzQuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNzYuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iNzkuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iODAuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iODEuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iODMuMTUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iODQuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iODYuNjUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iODguNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iOTAuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iOTEuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iOTMuNjUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iOTUuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iOTYuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iOTcuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iOTkuMTUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTAxLjY1MG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMC41MDBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjEwMy40MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjAuNTAwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxMDQuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTA2LjE1MG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMS4yNTBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjEwNy45MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjAuNTAwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxMDkuNjUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTExLjQwMG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMC41MDBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjExMi40MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjAuNTAwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxMTMuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTE0LjQwMG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMS4yNTBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjExNi45MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjEuMjUwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxMTkuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTIwLjQwMG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMC41MDBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjEyMS40MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjAuNTAwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxMjIuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTI0LjE1MG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMS4yNTBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjEyNi42NTBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjEuMjUwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxMjguNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTI5LjQwMG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMC41MDBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjEzMC40MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjEuMjUwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxMzIuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTM1LjQwMG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMC41MDBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjEzNi40MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjAuNTAwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxMzguMTUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTM5LjE1MG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMS4yNTBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjE0MC45MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjEuMjUwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxNDIuNjUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTQ0LjQwMG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMC41MDBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjE0Ni4xNTBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjAuNTAwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxNDcuMTUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTQ4LjkwMG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMC41MDBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjE0OS45MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjEuMjUwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxNTIuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTUzLjQwMG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMC41MDBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjE1NS4xNTBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjEuMjUwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxNTYuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTU4LjY1MG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMC41MDBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjE2MC40MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjAuNTAwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxNjEuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTYzLjkwMG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMC41MDBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjE2NC45MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjAuNTAwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxNjUuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTY4LjQwMG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMC41MDBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjE3MC4xNTBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjEuMjUwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxNzEuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIxLjI1MG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTc0LjQwMG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMC41MDBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjE3NS40MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjAuNTAwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxNzYuNDAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTc3LjQwMG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMS4yNTBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjE3OS4xNTBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjAuNTAwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxODAuOTAwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICAgICAgPHJlY3QgeD0iMTgyLjY1MG1tIiB5PSIxLjAwMG1tIiB3aWR0aD0iMS4yNTBtbSIgaGVpZ2h0PSIyMC4wMDBtbSIgc3R5bGU9ImZpbGw6YmxhY2s7Ii8+DQogICAgICAgIDxyZWN0IHg9IjE4NC40MDBtbSIgeT0iMS4wMDBtbSIgd2lkdGg9IjEuMjUwbW0iIGhlaWdodD0iMjAuMDAwbW0iIHN0eWxlPSJmaWxsOmJsYWNrOyIvPg0KICAgICAgICA8cmVjdCB4PSIxODYuMTUwbW0iIHk9IjEuMDAwbW0iIHdpZHRoPSIwLjUwMG1tIiBoZWlnaHQ9IjIwLjAwMG1tIiBzdHlsZT0iZmlsbDpibGFjazsiLz4NCiAgICA8L2c+DQo8L3N2Zz4NCg==" height="50px" /></div>
+          </td>
+        </tr>
+      </table>
+      <table class="ctN w666">
+        <tr class="h13">
+          <td />
+        </tr>
+        <tr>
+          <td class="Ar">Corte na linha pontilhada</td>
+        </tr>
+        <tr>
+          <td class="cut" />
+        </tr>
+      </table>
+    </div>
+    <script>
+      (function () {
+        var onLoadDocumentElement;
+        var onLoadDocumentCopy;
+
+        onDOMReady(function () {
+          onLoadDocumentCopy = document.body.children[0].outerHTML;
+          onLoadDocumentElement = hashString(onLoadDocumentCopy);
+
+          onDOMChange(function () {
+            document.body.innerHTML = onLoadDocumentCopy;
+          });
+        });
+
+        function onDOMReady(callback) {
+          if (document.readyState === "complete") return callback();
+
+          setTimeout(function () {
+            onDOMReady(callback);
+          }, 5);
+        }
+
+        function onDOMChange(callback) {
+          var childContent = document.body.children[0];
+
+          if (childContent) {
+            var currentDocumentElement = hashString(childContent.outerHTML);
+
+            if (onLoadDocumentElement !== currentDocumentElement) {
+              callback();
+            }
+          } else {
+            callback();
+          }
+
+          setTimeout(function () {
+            onDOMChange(callback);
+          }, 150);
+        }
+
+        function hashString(value) {
+          var hash = 0;
+
+          if (value.length === 0) return hash;
+
+          for (i = 0; i < value.length; i++) {
+            char = value.charCodeAt(i);
+            hash = (hash << 5) - hash + char;
+            hash = hash & hash; // Convert to 32bit integer
+          }
+
+          return hash;
+        }
+      })();
+    </script>
+  </body>
+</html>
