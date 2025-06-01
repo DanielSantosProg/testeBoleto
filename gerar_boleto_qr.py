@@ -1,6 +1,8 @@
 import base64
 import json
 import re
+import qrcode
+import qrcode.image.svg
 from io import BytesIO
 from pathlib import Path
 from barcode import ITF
@@ -58,6 +60,14 @@ def substituir_codigo_barras(html, svg_base64):
         flags=re.DOTALL
     )
 
+def substituir_qr_code(html, svg_base64):
+    img_tag = f'<img src="{svg_base64}" />'
+    return re.sub(
+        r'<td class="w123 qrcode" id="qr-code">.*?</td>',
+        f'<td class="w123 qrcode" id="qr-code">{img_tag}</td>',
+        html,
+        flags=re.DOTALL
+    )
 def substituir_campo_por_id(html, campo_id, valor):
     return re.sub(
         rf'(<(span|td)[^>]*id="{campo_id}"[^>]*>)(.*?)(</\2>)',
@@ -79,6 +89,29 @@ def decode_cod_bar(cod_bar_str, dict):
         else:
             print(f"Não reconhecido: {segment}")
     return decoded
+
+def gerar_qrcode_pix_svg_base64(pix_payload: str) -> str:    
+    qr = qrcode.QRCode(
+        version=None, 
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=5, 
+        border=4,
+    )
+
+    # Adiciona os dados do Pix ao QR Code
+    qr.add_data(pix_payload)
+    qr.make(fit=True) 
+
+    # Cria a imagem do QR Code
+    img_buffer = BytesIO()
+    
+    img = qr.make_image(image_factory=qrcode.image.svg.SvgImage)
+    img.save(img_buffer)
+
+    # Converte o conteúdo SVG do buffer para Base64
+    b64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+    
+    return 'data:image/svg+xml;charset=utf-8;base64,' + b64
 
 # Execução do código
 if __name__ == "__main__":
@@ -117,7 +150,6 @@ if __name__ == "__main__":
         "carteira": dados.get("cidtfdProdCobr", ""),                
     }
 
-
     # Formatando a data para "DD/MM/YYYY"
     dt_emissao_str = f'{dados.get("dataEmis10", "")}'.replace('.','/')
 
@@ -126,6 +158,17 @@ if __name__ == "__main__":
     # Definindo o valor correto
     valor_do_boleto_string = dados.get("valMoeda10", "0")
 
+    pix_payload = dados.get("wqrcdPdraoMercd", "")
+    if pix_payload:
+        qrcode_svg_base64 = gerar_qrcode_pix_svg_base64(pix_payload)
+        print("QR Code Pix (Base64 SVG) gerado com sucesso!")
+        print(qrcode_svg_base64)
+        html = substituir_qr_code(html, qrcode_svg_base64)
+    else:
+        print("Payload Pix (wqrcdPdraoMercd) não encontrado na resposta da API.")
+
+
+    # Formatando o valor do boleto
     try:
         valor_float = int(valor_do_boleto_string) / 100.0
         valor_format = f'R$ {valor_float:.2f}'.replace('.', ',')
@@ -135,7 +178,7 @@ if __name__ == "__main__":
     
     campos["valor"] = valor_format
 
-    # Formatando a string de valor completo
+    # Formatando a string de endereço completo
     endereco_pagador = (
         f'{dados["nomeSacado10"]}<br />'
         f'{dados["endSacado10"]}<br />'

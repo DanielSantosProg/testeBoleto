@@ -22,10 +22,6 @@
         padding: 0;
       }
 
-      img {
-        border: 0;
-      }
-
       .cp {
         font: bold 10px arial;
         color: black;
@@ -91,6 +87,10 @@
       }
       .pL10 {
         padding-left: 10px;
+      }
+      .qrcode {
+        text-align: center;
+        padding-top: 10px;
       }
       .imgLogo {
         width: 150px;
@@ -223,6 +223,9 @@
       }
       .w298 {
         width: 298px;
+      }
+      .w354 {
+        width: 354px;
       }
       .w409 {
         width: 409px;
@@ -504,7 +507,7 @@
       <table class="w666">
         <tr class="ct h13">
           <td class="w72">Uso do banco</td>
-          <td class="w33">CIP</td>
+          <td class="w34">CIP</td>
           <td class="w83">Carteira</td>
           <td class="w53">Moeda</td>
           <td class="w123">Quantidade</td>
@@ -523,11 +526,14 @@
       </table>
       <table class="w666">
         <tr class="rc6">
-          <td class="w478">
+          <td class="w354">
             <div class="ctN pL10">
               Instruções (Texto de responsabilidade do beneficiário)
             </div>
             <div class="cpN pL10"></div>
+          </td>
+          <td class="w123 qrcode" id="qr-code">
+            <img id="qrcode" src="" />
           </td>
           <td class="w186">
             <div class="t">(-) Desconto / Abatimentos</div>
