@@ -68,6 +68,7 @@ def substituir_qr_code(html, svg_base64):
         html,
         flags=re.DOTALL
     )
+
 def substituir_campo_por_id(html, campo_id, valor):
     return re.sub(
         rf'(<(span|td)[^>]*id="{campo_id}"[^>]*>)(.*?)(</\2>)',
@@ -162,7 +163,6 @@ if __name__ == "__main__":
     if pix_payload:
         qrcode_svg_base64 = gerar_qrcode_pix_svg_base64(pix_payload)
         print("QR Code Pix (Base64 SVG) gerado com sucesso!")
-        print(qrcode_svg_base64)
         html = substituir_qr_code(html, qrcode_svg_base64)
     else:
         print("Payload Pix (wqrcdPdraoMercd) não encontrado na resposta da API.")
@@ -189,7 +189,6 @@ if __name__ == "__main__":
     campos["endereco-pagador"] = endereco_pagador
 
     # Formatação do número de Agência/conta
-
     valor_agencia_int = dados.get("agencCred10", "")
     valor_conta_int = dados.get("ctaCred10", "")
 
@@ -211,5 +210,3 @@ if __name__ == "__main__":
     # Salva o HTML final
     with open("boleto-qr.html", "w", encoding="utf-8") as f:
         f.write(html)
-
-    print("boleto-qr.html gerado com sucesso.")
