@@ -3,10 +3,14 @@ import json
 import re
 import qrcode
 import qrcode.image.svg
+import pip._vendor.requests as requests
+
 from io import BytesIO
 from pathlib import Path
 from barcode import ITF
 from barcode.writer import SVGWriter
+from auth import get_token
+
 
 # Dictionary para utilizar no decode do código de barras
 ebcdic_to_num = {
@@ -32,6 +36,28 @@ ebcdic_to_num = {
     "NwNwn": "95", "nWNwn": "96", "nwnWN": "97", "NwnWn": "98", "nWnWn": "99",
 }
 
+# Função para registrar o boleto
+def registrar_boleto(auth_token, dados_payload):
+    token = auth_token
+    url = 'https://openapisandbox.prebanco.com.br/boleto-hibrido/cobranca-registro/v1/gerarBoleto'
+    cert_path = "certificado.crt"
+    key_path = "chave.key"
+    
+    headers = {
+        'Authorization': token,
+        "Content-Type": "application/json"
+    }
+
+    payload_boleto = dados_payload
+
+    boleto_response = requests.post(url, headers=headers, json=payload_boleto, cert=(cert_path, key_path), verify=True)
+
+    if boleto_response.status_code != 200:
+        print("Erro ao registrar boleto:", boleto_response.status_code, boleto_response.text)
+        return None
+
+    return boleto_response.json()
+
 # Função para Criar o código de barras em SVG base64
 def base64_svg(codigo_de_barras: str) -> str:
     data = BytesIO()
@@ -46,11 +72,7 @@ def base64_svg(codigo_de_barras: str) -> str:
     b64 = base64.b64encode(data.getvalue()).decode('utf-8')
     return 'data:image/svg+xml;charset=utf-8;base64,' + b64
 
-def html_base64_img(filename: str | Path, base64: str) -> None:
-    with open(filename, 'w') as f:
-        f.write("<img src='{}'>".format(base64))
-
-# === FUNÇÕES DE SUBSTITUIÇÃO NO HTML ===
+# A seguir as funções de Substituição no html
 def substituir_codigo_barras(html, svg_base64):
     img_tag = f'<img src="{svg_base64}" height="50px" />'
     return re.sub(
@@ -77,6 +99,7 @@ def substituir_campo_por_id(html, campo_id, valor):
         flags=re.DOTALL
     )
 
+# Faz a decodificação do código de barras
 def decode_cod_bar(cod_bar_str, dict):
     cleaned_cod_bar_str = cod_bar_str.strip('<>') 
     decoded = ""
@@ -91,6 +114,7 @@ def decode_cod_bar(cod_bar_str, dict):
             print(f"Não reconhecido: {segment}")
     return decoded
 
+# Gera o QR Code
 def gerar_qrcode_pix_svg_base64(pix_payload: str) -> str:    
     qr = qrcode.QRCode(
         version=None, 
@@ -116,9 +140,123 @@ def gerar_qrcode_pix_svg_base64(pix_payload: str) -> str:
 
 # Execução do código
 if __name__ == "__main__":
-    # Leitura dos dados do JSON retornado da API
-    with open("dados_boleto_qr.json", "r", encoding="utf-8") as f:
-        dados = json.load(f)
+    # Gerando o token
+    token = get_token()
+
+
+    #Dados do payload, usado para o Sandbox da Api Bradesco
+    dados_payload = {
+        "ctitloCobrCdent": 0,
+        "registrarTitulo": 1,
+        "nroCpfCnpjBenef": 68542653,
+        "codUsuario": "APISERVIC",
+        "filCpfCnpjBenef": "1018",
+        "tipoAcesso": 2,
+        "digCpfCnpjBenef": 38,
+        "cpssoaJuridContr": "",
+        "ctpoContrNegoc": "",
+        "cidtfdProdCobr": 9,
+        "nseqContrNegoc": "",
+        "cnegocCobr": 111111111111111112,
+        "filler": "",
+        "eNseqContrNegoc": "",
+        "tipoRegistro": 1,
+        "codigoBanco": 237,
+        "cprodtServcOper": "",
+        "demisTitloCobr": "17.12.2024",
+        "ctitloCliCdent": "TESTEBIA",
+        "dvctoTitloCobr": "20.02.2025",
+        "cidtfdTpoVcto": "",
+        "vnmnalTitloCobr": 6000,
+        "cindcdEconmMoeda": 9,
+        "cespceTitloCobr": 2,
+        "qmoedaNegocTitlo": 0,
+        "ctpoProteTitlo": 0,
+        "cindcdAceitSacdo": "N",
+        "ctpoPrzProte": 0,
+        "ctpoPrzDecurs": 0,
+        "ctpoProteDecurs": 0,
+        "cctrlPartcTitlo": 0,
+        "cindcdPgtoParcial": "N",
+        "cformaEmisPplta": "02",
+        "qtdePgtoParcial": 0,
+        "ptxJuroVcto": 0,
+        "filler1": "",
+        "vdiaJuroMora": 0,
+        "pmultaAplicVcto": 0,
+        "qdiaInicJuro": 0,
+        "vmultaAtrsoPgto": 0,
+        "pdescBonifPgto01": 0,
+        "qdiaInicMulta": 0,
+        "vdescBonifPgto01": 0,
+        "pdescBonifPgto02": 0,
+        "dlimDescBonif1": "",
+        "vdescBonifPgto02": 0,
+        "pdescBonifPgto03": 0,
+        "dlimDescBonif2": "",
+        "vdescBonifPgto03": 0,
+        "ctpoPrzCobr": 0,
+        "dlimDescBonif3": "",
+        "pdescBonifPgto": 0,
+        "dlimBonifPgto": "",
+        "vdescBonifPgto": 0,
+        "vabtmtTitloCobr": 0,
+        "filler2": "",
+        "viofPgtoTitlo": 0,
+        "isacdoTitloCobr": "TESTE EMPRESA PGIT",
+        "enroLogdrSacdo": "TESTE",
+        "elogdrSacdoTitlo": "TESTE",
+        "ecomplLogdrSacdo": "TESTE",
+        "ccepSacdoTitlo": 6332,
+        "ebairoLogdrSacdo": "TESTE",
+        "ccomplCepSacdo": 130,
+        "imunSacdoTitlo": "TESTE",
+        "indCpfCnpjSacdo": 1,
+        "csglUfSacdo": "SP",
+        "renderEletrSacdo": "",
+        "cdddFoneSacdo": 0,
+        "nroCpfCnpjSacdo": 38453450803,
+        "bancoDeb": 0,
+        "cfoneSacdoTitlo": 0,
+        "agenciaDebDv": 0,
+        "agenciaDeb": 0,
+        "bancoCentProt": 0,
+        "contaDeb": 0,
+        "isacdrAvalsTitlo": "",
+        "agenciaDvCentPr": 0,
+        "enroLogdrSacdr": "0",
+        "elogdrSacdrAvals": "",
+        "ecomplLogdrSacdr": "",
+        "ccomplCepSacdr": 0,
+        "ebairoLogdrSacdr": "",
+        "csglUfSacdr": "",
+        "ccepSacdrTitlo": 0,
+        "imunSacdrAvals": "",
+        "indCpfCnpjSacdr": 0,
+        "renderEletrSacdr": "",
+        "nroCpfCnpjSacdr": 0,
+        "cdddFoneSacdr": 0,
+        "filler3": "0",
+        "cfoneSacdrTitlo": 0,
+        "iconcPgtoSpi": "",
+        "fase": "1",
+        "cindcdCobrMisto": "S",
+        "ialiasAdsaoCta": "",
+        "ilinkGeracQrcd": "",
+        "caliasAdsaoCta": "",
+        "wqrcdPdraoMercd": "",
+        "validadeAposVencimento": "",
+        "filler4": "",
+        "idLoc": ""
+    }
+
+    # Envia a requisição para registro do boleto
+    dados = registrar_boleto(token, dados_payload)
+
+    # Cancela a criação do boleto se não retornar os dados dele.
+    if not dados:
+        print("Erro: não foi possível registrar o boleto. Encerrando execução.")
+        exit(1)
 
     # Código de barras padrão FEBRABAN
     codigo_de_barras = dados.get("codBarras10", "")
@@ -162,7 +300,6 @@ if __name__ == "__main__":
     pix_payload = dados.get("wqrcdPdraoMercd", "")
     if pix_payload:
         qrcode_svg_base64 = gerar_qrcode_pix_svg_base64(pix_payload)
-        print("QR Code Pix (Base64 SVG) gerado com sucesso!")
         html = substituir_qr_code(html, qrcode_svg_base64)
     else:
         print("Payload Pix (wqrcdPdraoMercd) não encontrado na resposta da API.")
@@ -209,4 +346,5 @@ if __name__ == "__main__":
 
     # Salva o HTML final
     with open("boleto-qr.html", "w", encoding="utf-8") as f:
+        print("Boleto gerado com sucesso.")
         f.write(html)

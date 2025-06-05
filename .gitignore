@@ -2,3 +2,7 @@ node_modules
 */node_modules
 */.env
 venv/
+certificado.crt
+chave_privada.pfx
+chave.key
+token.json

@@ -1,8 +1,5 @@
-cod = "23792856009500700001141022265205110000000010000" 
+import time
 
-caract = list(cod)
-count = 0
-for c in caract:
-    count += 1
+now = time.time()
 
-print(count)
+print(now)
