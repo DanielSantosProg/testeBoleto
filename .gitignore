@@ -6,3 +6,6 @@ certificado.crt
 chave_privada.pfx
 chave.key
 token.json
+build
+bin
+__pycache__

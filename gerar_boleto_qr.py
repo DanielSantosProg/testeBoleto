@@ -1,16 +1,13 @@
 import base64
-import json
 import re
 import qrcode
 import qrcode.image.svg
-import pip._vendor.requests as requests
+import requests
 
 from io import BytesIO
-from pathlib import Path
 from barcode import ITF
 from barcode.writer import SVGWriter
-from auth import get_token
-
+from auth import get_token # Importa a função de autenticação
 
 # Dictionary para utilizar no decode do código de barras
 ebcdic_to_num = {
@@ -50,13 +47,16 @@ def registrar_boleto(auth_token, dados_payload):
 
     payload_boleto = dados_payload
 
-    boleto_response = requests.post(url, headers=headers, json=payload_boleto, cert=(cert_path, key_path), verify=True)
-
-    if boleto_response.status_code != 200:
-        print("Erro ao registrar boleto:", boleto_response.status_code, boleto_response.text)
+    try:
+        boleto_response = requests.post(url, headers=headers, json=payload_boleto, cert=(cert_path, key_path), verify=True)
+        boleto_response.raise_for_status() # Lança exceção para status codes 4xx/5xx
+        return boleto_response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro na requisição para a API do Bradesco: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"Status Code: {e.response.status_code}")
+            print(f"Response Text: {e.response.text}")
         return None
-
-    return boleto_response.json()
 
 # Função para Criar o código de barras em SVG base64
 def base64_svg(codigo_de_barras: str) -> str:
@@ -83,10 +83,10 @@ def substituir_codigo_barras(html, svg_base64):
     )
 
 def substituir_qr_code(html, svg_base64):
-    img_tag = f'<img src="{svg_base64}" />'
+    img_tag = f'<img src="{svg_base64}" />'    
     return re.sub(
         r'<td class="w123 qrcode" id="qr-code">.*?</td>',
-        f'<td class="w123 qrcode" id="qr-code">{img_tag}</td>',
+        f'<td class="w123 qrcode" id="qr-code">Pague com Pix<br/>{img_tag}</td>',
         html,
         flags=re.DOTALL
     )
@@ -100,7 +100,7 @@ def substituir_campo_por_id(html, campo_id, valor):
     )
 
 # Faz a decodificação do código de barras
-def decode_cod_bar(cod_bar_str, dict):
+def decode_cod_bar(cod_bar_str, ebcdic_dict):
     cleaned_cod_bar_str = cod_bar_str.strip('<>') 
     decoded = ""
 
@@ -108,14 +108,15 @@ def decode_cod_bar(cod_bar_str, dict):
     for i in range(0, len(cleaned_cod_bar_str), length):
         segment = cleaned_cod_bar_str[i : i + length]
         
-        if segment in dict:
-            decoded += dict[segment]
+        if segment in ebcdic_dict:
+            decoded += ebcdic_dict[segment]
         else:
-            print(f"Não reconhecido: {segment}")
+            print(f"Não reconhecido: {segment}") 
+            raise ValueError(f"Segmento de código de barras não reconhecido: {segment}")
     return decoded
 
 # Gera o QR Code
-def gerar_qrcode_pix_svg_base64(pix_payload: str) -> str:    
+def gerar_qrcode_pix_svg_base64(pix_payload: str) -> str:     
     qr = qrcode.QRCode(
         version=None, 
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -138,213 +139,142 @@ def gerar_qrcode_pix_svg_base64(pix_payload: str) -> str:
     
     return 'data:image/svg+xml;charset=utf-8;base64,' + b64
 
-# Execução do código
-if __name__ == "__main__":
-    # Gerando o token
-    token = get_token()
 
-
-    #Dados do payload, usado para o Sandbox da Api Bradesco
-    dados_payload = {
-        "ctitloCobrCdent": 0,
-        "registrarTitulo": 1,
-        "nroCpfCnpjBenef": 68542653,
-        "codUsuario": "APISERVIC",
-        "filCpfCnpjBenef": "1018",
-        "tipoAcesso": 2,
-        "digCpfCnpjBenef": 38,
-        "cpssoaJuridContr": "",
-        "ctpoContrNegoc": "",
-        "cidtfdProdCobr": 9,
-        "nseqContrNegoc": "",
-        "cnegocCobr": 111111111111111112,
-        "filler": "",
-        "eNseqContrNegoc": "",
-        "tipoRegistro": 1,
-        "codigoBanco": 237,
-        "cprodtServcOper": "",
-        "demisTitloCobr": "17.12.2024",
-        "ctitloCliCdent": "TESTEBIA",
-        "dvctoTitloCobr": "20.02.2025",
-        "cidtfdTpoVcto": "",
-        "vnmnalTitloCobr": 6000,
-        "cindcdEconmMoeda": 9,
-        "cespceTitloCobr": 2,
-        "qmoedaNegocTitlo": 0,
-        "ctpoProteTitlo": 0,
-        "cindcdAceitSacdo": "N",
-        "ctpoPrzProte": 0,
-        "ctpoPrzDecurs": 0,
-        "ctpoProteDecurs": 0,
-        "cctrlPartcTitlo": 0,
-        "cindcdPgtoParcial": "N",
-        "cformaEmisPplta": "02",
-        "qtdePgtoParcial": 0,
-        "ptxJuroVcto": 0,
-        "filler1": "",
-        "vdiaJuroMora": 0,
-        "pmultaAplicVcto": 0,
-        "qdiaInicJuro": 0,
-        "vmultaAtrsoPgto": 0,
-        "pdescBonifPgto01": 0,
-        "qdiaInicMulta": 0,
-        "vdescBonifPgto01": 0,
-        "pdescBonifPgto02": 0,
-        "dlimDescBonif1": "",
-        "vdescBonifPgto02": 0,
-        "pdescBonifPgto03": 0,
-        "dlimDescBonif2": "",
-        "vdescBonifPgto03": 0,
-        "ctpoPrzCobr": 0,
-        "dlimDescBonif3": "",
-        "pdescBonifPgto": 0,
-        "dlimBonifPgto": "",
-        "vdescBonifPgto": 0,
-        "vabtmtTitloCobr": 0,
-        "filler2": "",
-        "viofPgtoTitlo": 0,
-        "isacdoTitloCobr": "TESTE EMPRESA PGIT",
-        "enroLogdrSacdo": "TESTE",
-        "elogdrSacdoTitlo": "TESTE",
-        "ecomplLogdrSacdo": "TESTE",
-        "ccepSacdoTitlo": 6332,
-        "ebairoLogdrSacdo": "TESTE",
-        "ccomplCepSacdo": 130,
-        "imunSacdoTitlo": "TESTE",
-        "indCpfCnpjSacdo": 1,
-        "csglUfSacdo": "SP",
-        "renderEletrSacdo": "",
-        "cdddFoneSacdo": 0,
-        "nroCpfCnpjSacdo": 38453450803,
-        "bancoDeb": 0,
-        "cfoneSacdoTitlo": 0,
-        "agenciaDebDv": 0,
-        "agenciaDeb": 0,
-        "bancoCentProt": 0,
-        "contaDeb": 0,
-        "isacdrAvalsTitlo": "",
-        "agenciaDvCentPr": 0,
-        "enroLogdrSacdr": "0",
-        "elogdrSacdrAvals": "",
-        "ecomplLogdrSacdr": "",
-        "ccomplCepSacdr": 0,
-        "ebairoLogdrSacdr": "",
-        "csglUfSacdr": "",
-        "ccepSacdrTitlo": 0,
-        "imunSacdrAvals": "",
-        "indCpfCnpjSacdr": 0,
-        "renderEletrSacdr": "",
-        "nroCpfCnpjSacdr": 0,
-        "cdddFoneSacdr": 0,
-        "filler3": "0",
-        "cfoneSacdrTitlo": 0,
-        "iconcPgtoSpi": "",
-        "fase": "1",
-        "cindcdCobrMisto": "S",
-        "ialiasAdsaoCta": "",
-        "ilinkGeracQrcd": "",
-        "caliasAdsaoCta": "",
-        "wqrcdPdraoMercd": "",
-        "validadeAposVencimento": "",
-        "filler4": "",
-        "idLoc": ""
-    }
-
-    # Envia a requisição para registro do boleto
-    dados = registrar_boleto(token, dados_payload)
-
-    # Cancela a criação do boleto se não retornar os dados dele.
-    if not dados:
-        print("Erro: não foi possível registrar o boleto. Encerrando execução.")
-        exit(1)
-
-    # Código de barras padrão FEBRABAN
-    codigo_de_barras = dados.get("codBarras10", "")
-    cod_barras_decoded = decode_cod_bar(codigo_de_barras, ebcdic_to_num)
-    svg_base64 = base64_svg(cod_barras_decoded)
-
-    # Leitura do HTML base
-    with open("boleto-base.html", "r", encoding="utf-8") as f:
-        html = f.read()
-
-    # Substitui o bloco do código de barras
-    html = substituir_codigo_barras(html, svg_base64)
-
-    # Campos do JSON que devem ser injetados no HTML
-    campos = {
-        "nome-beneficiario": dados.get("cedente10", ""),
-        "cnpj-beneficiario": dados.get("cnpjCpfCedente10", ""),
-        "nome-pagador": dados.get("nomeSacado10", ""),
-        "cpf-pagador": dados.get("cnpjSacado10", ""),
-        "endereco-pagador": dados.get("endSacado10", ""),
-        "municipio-pagador": dados.get("cidSacado10", ""),
-        "uf-pagador": dados.get("ufSacado10", ""),
-        "linha-digitavel-1": dados.get("linhaDig10", ""),
-        "linha-digitavel-2": dados.get("linhaDig10", ""),
-        "moeda": dados.get("especMoeda10", ""),
-        "nosso-numero": dados.get("ctitloCobrCdent", ""),
-        "vencimento": f'{dados.get("dataVencto10", "")}'.replace('.','/'),
-        "especie-doc": dados.get("especDocto10", ""),
-        "aceite": dados.get("aceite10", ""),
-        "carteira": dados.get("cidtfdProdCobr", ""),                
-    }
-
-    # Formatando a data para "DD/MM/YYYY"
-    dt_emissao_str = f'{dados.get("dataEmis10", "")}'.replace('.','/')
-
-    campos["data-emissao"] = dt_emissao_str
-
-    # Definindo o valor correto
-    valor_do_boleto_string = dados.get("valMoeda10", "0")
-
-    pix_payload = dados.get("wqrcdPdraoMercd", "")
-    if pix_payload:
-        qrcode_svg_base64 = gerar_qrcode_pix_svg_base64(pix_payload)
-        html = substituir_qr_code(html, qrcode_svg_base64)
-    else:
-        print("Payload Pix (wqrcdPdraoMercd) não encontrado na resposta da API.")
-
-
-    # Formatando o valor do boleto
+def gerar_boleto(dados_payload: dict) -> dict:
     try:
-        valor_float = int(valor_do_boleto_string) / 100.0
-        valor_format = f'R$ {valor_float:.2f}'.replace('.', ',')
-    except ValueError:
-        valor_float = 0.0
-        valor_format = '0,00'
-    
-    campos["valor"] = valor_format
+        # Gerando o token
+        token = get_token()
+        if not token:
+            print("Erro: Não foi possível obter o token de autenticação.")
+            return {"error": "Não foi possível obter o token de autenticação."}
 
-    # Formatando a string de endereço completo
-    endereco_pagador = (
-        f'{dados["nomeSacado10"]}<br />'
-        f'{dados["endSacado10"]}<br />'
-        f'{dados["baiSacado10"]}<br />'
-        f'{dados["cidSacado10"]} - {dados["ufSacado10"]} - '
-        f'CEP: {int(dados["cepSacado10"]):05d}-{dados["cepcSacado10"]}'
-    )
-    campos["endereco-pagador"] = endereco_pagador
+        # Envia a requisição para registro do boleto
+        dados = registrar_boleto(token, dados_payload)
 
-    # Formatação do número de Agência/conta
-    valor_agencia_int = dados.get("agencCred10", "")
-    valor_conta_int = dados.get("ctaCred10", "")
+        # Cancela a criação do boleto se não retornar os dados dele.
+        if not dados:
+            print("Erro: Não foi possível registrar o boleto na API do Bradesco.")
+            return {"error": "Não foi possível registrar o boleto."}
 
-    try:
-        valor_agencia = str(valor_agencia_int)
-        valor_conta = str(valor_conta_int)
-        str_agencia_conta = f'{valor_agencia}/{valor_conta}'        
-    except ValueError:
-        valor_agencia = '0'
-        valor_conta = '0'
-        str_agencia_conta = '0/0'
+        # Código de barras padrão FEBRABAN
+        codigo_de_barras = dados.get("codBarras10", "")
+        if not codigo_de_barras:
+            print("Aviso: 'codBarras10' não encontrado na resposta da API.")
+            # Avisa que não foi achado o campo do código de barras
+        
+        cod_barras_decoded = decode_cod_bar(codigo_de_barras, ebcdic_to_num)
+        svg_base64_barcode = base64_svg(cod_barras_decoded)
 
-    campos['agencia-conta-beneficiario'] = str_agencia_conta
+        # Leitura do HTML base
+        try:
+            with open("boleto-base.html", "r", encoding="utf-8") as f:
+                html = f.read()
+        except FileNotFoundError:
+            print("Erro: Arquivo 'boleto-base.html' não encontrado. Certifique-se de que está no mesmo diretório ou caminho acessível.")
+            return {"error": "Template HTML do boleto não encontrado."}
+        except Exception as e:
+            print(f"Erro ao ler 'boleto-base.html': {e}")
+            return {"error": f"Erro ao ler template HTML: {e}"}
 
-    # Substituição campo por campo
-    for campo_id, valor in campos.items():
-        html = substituir_campo_por_id(html, campo_id, valor)
+        # Substitui o bloco do código de barras
+        html = substituir_codigo_barras(html, svg_base64_barcode)
 
-    # Salva o HTML final
-    with open("boleto-qr.html", "w", encoding="utf-8") as f:
-        print("Boleto gerado com sucesso.")
-        f.write(html)
+        # Campos do JSON para inserir no html
+        campos = {
+            "nome-beneficiario": dados.get("cedente10", ""),
+            "cnpj-beneficiario": dados.get("cnpjCpfCedente10", ""),
+            "nome-pagador": dados.get("nomeSacado10", ""),
+            "cpf-pagador": dados.get("cnpjSacado10", ""),
+            "endereco-pagador": dados.get("endSacado10", ""),
+            "municipio-pagador": dados.get("cidSacado10", ""),
+            "uf-pagador": dados.get("ufSacado10", ""),
+            "linha-digitavel-1": dados.get("linhaDig10", ""),
+            "linha-digitavel-2": dados.get("linhaDig10", ""),
+            "moeda": dados.get("especMoeda10", ""),
+            "nosso-numero": dados.get("ctitloCobrCdent", ""),
+            "vencimento": f'{dados.get("dataVencto10", "")}'.replace('.','/'),
+            "especie-doc": dados.get("especDocto10", ""),
+            "aceite": dados.get("aceite10", ""),
+            "carteira": dados.get("cidtfdProdCobr", ""),                
+        }
+
+        # Formatando a data para "DD/MM/AAAA"
+        dt_emissao_str = f'{dados.get("dataEmis10", "")}'.replace('.','/')
+        campos["data-emissao"] = dt_emissao_str
+
+        # Definindo o valor correto
+        valor_do_boleto_string = dados.get("valMoeda10", "0")
+        try:
+            valor_float = int(valor_do_boleto_string) / 100.0
+            valor_format = f'R$ {valor_float:.2f}'.replace('.', ',')
+        except ValueError:
+            valor_float = 0.0
+            valor_format = '0,00'
+        
+        campos["valor"] = valor_format
+
+        # Formatando a string de endereço completo
+        nome_sacado = dados.get("nomeSacado10", "")
+        end_sacado = dados.get("endSacado10", "")
+        bai_sacado = dados.get("baiSacado10", "")
+        cid_sacado = dados.get("cidSacado10", "")
+        uf_sacado = dados.get("ufSacado10", "")
+        cep_sacado = dados.get("cepSacado10", "0")
+        cepc_sacado = dados.get("cepcSacado10", "")
+
+        try:
+            endereco_pagador = (
+                f'{nome_sacado}<br />'
+                f'{end_sacado}<br />'
+                f'{bai_sacado}<br />'
+                f'{cid_sacado} - {uf_sacado} - '
+                f'CEP: {int(cep_sacado):05d}-{cepc_sacado}'
+            )
+        except ValueError: # Caso o CEP não seja numérico
+             endereco_pagador = (
+                f'{nome_sacado}<br />'
+                f'{end_sacado}<br />'
+                f'{bai_sacado}<br />'
+                f'{cid_sacado} - {uf_sacado} - '
+                f'CEP: {cep_sacado}-{cepc_sacado}'
+            )
+        campos["endereco-pagador"] = endereco_pagador
+
+        # Formatação do número de Agência/conta
+        valor_agencia_int = dados.get("agencCred10", "")
+        valor_conta_int = dados.get("ctaCred10", "")
+
+        try:
+            valor_agencia = str(valor_agencia_int)
+            valor_conta = str(valor_conta_int)
+            str_agencia_conta = f'{valor_agencia}/{valor_conta}'           
+        except ValueError:
+            valor_agencia = '0'
+            valor_conta = '0'
+            str_agencia_conta = '0/0'
+
+        campos['agencia-conta-beneficiario'] = str_agencia_conta
+
+        # Gerar e substituir QR Code Pix
+        pix_payload = dados.get("wqrcdPdraoMercd", "")
+        if pix_payload:
+            qrcode_svg_base64 = gerar_qrcode_pix_svg_base64(pix_payload)
+            html = substituir_qr_code(html, qrcode_svg_base64)
+        else:
+            print("Aviso: Payload Pix (wqrcdPdraoMercd) não encontrado na resposta da API.")
+            # Se não houver Pix, você pode substituir o campo por algo vazio ou uma mensagem
+            html = substituir_qr_code(html, "") # Substitui por vazio para remover a tag img
+
+        # Substituição campo por campo
+        for campo_id, valor in campos.items():
+            html = substituir_campo_por_id(html, campo_id, valor)
+
+        # Não salva o HTML, passa ele para a API
+        return {
+            "status": "success",
+            "boleto_html": html,
+            "dados_bradesco_api": dados # retorna os dados da API
+        }
+    except Exception as e:
+        print(f"Erro inesperado na geração do boleto: {e}")
+        return {"error": f"Erro interno na geração do boleto: {e}"}

@@ -90,7 +90,8 @@
       }
       .qrcode {
         text-align: center;
-        padding-top: 10px;
+        font-size: 12px;
+        padding-top: 5px;
       }
       .imgLogo {
         width: 150px;
@@ -296,6 +297,12 @@
         height: 50px;
       }
 
+      .barcode img {
+        max-width: 100%;
+        height: 50px;
+        display: inline-block;
+      }
+
       .barcode-line {
         height: inherit;
         display: inline-block;
@@ -329,14 +336,14 @@
         <tr class="ti">
           <td class="At Ac">
             <br />
-            <form>
-              <input
+            <!-- <form>
+              Este é um comentário <input
                 class="no-print"
                 type="button"
                 value="Clique aqui para imprimir"
                 onclick="window.print();return false;"
               />
-            </form>
+            </form>-->
           </td>
         </tr>
       </table>
