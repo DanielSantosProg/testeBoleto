@@ -3,11 +3,11 @@ import re
 import qrcode
 import qrcode.image.svg
 import requests
+import requests_pkcs12
 
 from io import BytesIO
 from barcode import ITF
 from barcode.writer import SVGWriter
-from auth import get_token # Importa a função de autenticação
 
 # Dictionary para utilizar no decode do código de barras
 ebcdic_to_num = {
@@ -34,22 +34,22 @@ ebcdic_to_num = {
 }
 
 # Função para registrar o boleto
-def registrar_boleto(auth_token, dados_payload):
-    token = auth_token
+def registrar_boleto(auth_token, dados_payload, pfx_path, senha):
     url = 'https://openapisandbox.prebanco.com.br/boleto-hibrido/cobranca-registro/v1/gerarBoleto'
-    cert_path = "certificado.crt"
-    key_path = "chave.key"
-    
     headers = {
-        'Authorization': token,
+        'Authorization': auth_token,
         "Content-Type": "application/json"
     }
 
-    payload_boleto = dados_payload
-
     try:
-        boleto_response = requests.post(url, headers=headers, json=payload_boleto, cert=(cert_path, key_path), verify=True)
-        boleto_response.raise_for_status() # Lança exceção para status codes 4xx/5xx
+        boleto_response = requests_pkcs12.post(
+            url,
+            headers=headers,
+            json=dados_payload,
+            pkcs12_filename=pfx_path,
+            pkcs12_password=senha
+        )
+        boleto_response.raise_for_status()
         return boleto_response.json()
     except requests.exceptions.RequestException as e:
         print(f"Erro na requisição para a API do Bradesco: {e}")
@@ -140,16 +140,10 @@ def gerar_qrcode_pix_svg_base64(pix_payload: str) -> str:
     return 'data:image/svg+xml;charset=utf-8;base64,' + b64
 
 
-def gerar_boleto(dados_payload: dict) -> dict:
+def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> dict:
     try:
-        # Gerando o token
-        token = get_token()
-        if not token:
-            print("Erro: Não foi possível obter o token de autenticação.")
-            return {"error": "Não foi possível obter o token de autenticação."}
-
         # Envia a requisição para registro do boleto
-        dados = registrar_boleto(token, dados_payload)
+        dados = registrar_boleto(token, dados_payload, pfx_path, senha) 
 
         # Cancela a criação do boleto se não retornar os dados dele.
         if not dados:
