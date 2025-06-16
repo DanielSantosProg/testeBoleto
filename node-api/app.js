@@ -64,8 +64,6 @@ app.post("/gerar_boleto", async (req, res) => {
     });
 
     python.on("close", (code) => {
-      console.log("stdoutData:", stdoutData);
-      console.log("stderrData:", stderrData);
       if (code !== 0 || stdoutData.startsWith("[ERROR]")) {
         const erro = stdoutData.startsWith("[ERROR]")
           ? stdoutData.replace("[ERROR]", "").trim()

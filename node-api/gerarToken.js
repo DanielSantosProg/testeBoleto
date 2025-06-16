@@ -51,8 +51,11 @@ async function gerarNovoToken() {
       }
     );
 
-    const { access_token, expires_in } = response.data;
-    const expires_at = Math.floor(Date.now() / 1000) + expires_in - 60; // 1 min de folga
+    const { access_token } = response.data;
+    const expires_in = parseInt(response.data.expires_in, 10);
+
+    const now = Math.floor(Date.now() / 1000);
+    const expires_at = now + expires_in - 60; // 1 min antes de expirar invalida o token
 
     fs.writeFileSync(
       tokenFile,
@@ -70,7 +73,8 @@ async function getToken() {
   try {
     if (fs.existsSync(tokenFile)) {
       const data = JSON.parse(fs.readFileSync(tokenFile, "utf8"));
-      if (Date.now() / 1000 < data.expires_at) {
+      const seconds = Math.floor(Date.now() / 1000);
+      if (seconds < data.expires_at) {
         return data.access_token;
       } else {
         console.log("Token expirado. Gerando novo...");
