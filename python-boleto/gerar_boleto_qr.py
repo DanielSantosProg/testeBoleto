@@ -7,7 +7,7 @@ import requests_pkcs12
 
 from io import BytesIO
 from barcode import ITF
-from barcode.writer import SVGWriter
+from barcode.writer import SVGWriter, ImageWriter
 
 # Dictionary para utilizar no decode do código de barras
 ebcdic_to_num = {
@@ -71,6 +71,20 @@ def base64_svg(codigo_de_barras: str) -> str:
     )
     b64 = base64.b64encode(data.getvalue()).decode('utf-8')
     return 'data:image/svg+xml;charset=utf-8;base64,' + b64
+
+# Função para Criar o código de barras em PNG base64
+def base64_png(codigo_de_barras: str) -> str:
+   data = BytesIO()
+   ITF(codigo_de_barras, writer=ImageWriter()).write( 
+      data,
+      options={ 
+         'module_width': 0.25,
+         'module_height': 20, 
+         'write_text': False,
+       }, 
+   ) 
+   b64 = base64.b64encode(data.getvalue()).decode('utf-8') 
+   return 'data:image/png;charset=utf-8;base64,' + b64
 
 # A seguir as funções de Substituição no html
 def substituir_codigo_barras(html, svg_base64):
@@ -153,11 +167,10 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
         # Código de barras padrão FEBRABAN
         codigo_de_barras = dados.get("codBarras10", "")
         if not codigo_de_barras:
-            print("Aviso: 'codBarras10' não encontrado na resposta da API.")
-            # Avisa que não foi achado o campo do código de barras
+            print("Aviso: 'codBarras10' não encontrado na resposta da API.")            
         
         cod_barras_decoded = decode_cod_bar(codigo_de_barras, ebcdic_to_num)
-        svg_base64_barcode = base64_svg(cod_barras_decoded)
+        png_base64_barcode = base64_png(cod_barras_decoded)
 
         # Leitura do HTML base
         try:
@@ -171,7 +184,7 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
             return {"error": f"Erro ao ler template HTML: {e}"}
 
         # Substitui o bloco do código de barras
-        html = substituir_codigo_barras(html, svg_base64_barcode)
+        html = substituir_codigo_barras(html, png_base64_barcode)
 
         # Campos do JSON para inserir no html
         campos = {
@@ -256,7 +269,6 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
             html = substituir_qr_code(html, qrcode_svg_base64)
         else:
             print("Aviso: Payload Pix (wqrcdPdraoMercd) não encontrado na resposta da API.")
-            # Se não houver Pix, você pode substituir o campo por algo vazio ou uma mensagem
             html = substituir_qr_code(html, "") # Substitui por vazio para remover a tag img
 
         # Substituição campo por campo
