@@ -1,7 +1,6 @@
-// server.js
 const express = require("express");
 const gerarBoleto = require("./gerarBoletoService");
-const pdf = require("html-pdf");
+const puppeteer = require("puppeteer");
 require("dotenv").config();
 
 const app = express();
@@ -9,29 +8,44 @@ app.use(express.json({ limit: "10mb" }));
 
 app.post("/gerar_boleto", async (req, res) => {
   try {
-    const html = await gerarBoleto(req.body);
+    const resultado = await gerarBoleto(req.body);
 
-    pdf.create(html, { format: "A4" }).toBuffer((err, buffer) => {
-      if (err) {
-        console.error("Erro ao gerar PDF:", err);
-        return res.status(500).json({ error: "Erro ao gerar PDF" });
-      }
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", "attachment; filename=boleto.pdf");
-      res.send(buffer);
+    const { boleto_html, status, dados_bradesco_api } = resultado;
+
+    const browser = await puppeteer.launch({
+      headless: "new",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
+
+    const page = await browser.newPage();
+    await page.setContent(boleto_html, { waitUntil: "networkidle0" });
+
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+    });
+
+    await browser.close();
+
+    // Envia o PDF gerado como resposta
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "attachment; filename=boleto.pdf");
+    res.setHeader("boleto-status", status);
+    res.send(pdfBuffer);
   } catch (error) {
     console.error("Erro ao gerar boleto:", error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
+// Função para iniciar o servidor em uma porta específica
 function startServer(porta = process.env.PORT || 3000) {
   app.listen(porta, () => {
     console.log(`Servidor rodando na porta ${porta}`);
   });
 }
 
+// Exporta como módulo para uso externo
 module.exports = {
   app,
   startServer,

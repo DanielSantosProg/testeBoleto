@@ -23,7 +23,11 @@ def main():
             print(json.dumps({"error": resultado["error"]}))
             sys.exit(1)
 
-        print(resultado["boleto_html"])
+        print(json.dumps({
+            "status": resultado["status"],
+            "boleto_html": resultado["boleto_html"],
+            "dados_bradesco_api": resultado["dados_bradesco_api"]
+        }))
         sys.exit(0)
     except Exception as e:
         print(json.dumps({"error": f"Erro inesperado: {str(e)}"}))

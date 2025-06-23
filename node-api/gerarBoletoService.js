@@ -1,4 +1,3 @@
-// gerarBoletoService.js
 const { spawn } = require("child_process");
 const sql = require("mssql");
 const getToken = require("./gerarToken");
@@ -8,7 +7,6 @@ async function gerarBoleto(payload) {
   const token = await getToken();
   if (!token) throw new Error("Erro ao obter token");
 
-  // Cria a conexão com o banco de dados
   const pool = await sql.connect({
     server: process.env.DB_SERVER,
     database: process.env.DB_DATABASE,
@@ -42,6 +40,7 @@ async function gerarBoleto(payload) {
     python.stdout.on("data", (data) => {
       stdout += data.toString();
     });
+
     python.stderr.on("data", (data) => {
       stderr += data.toString();
     });
@@ -54,7 +53,14 @@ async function gerarBoleto(payload) {
         return reject(new Error(erro));
       }
 
-      resolve(stdout); // HTML retornado pelo Python
+      try {
+        const parsed = JSON.parse(stdout);
+        resolve(parsed); // Agora é um objeto completo
+      } catch (err) {
+        reject(
+          new Error("Erro ao interpretar resposta do Python: " + err.message)
+        );
+      }
     });
   });
 }

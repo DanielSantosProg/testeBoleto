@@ -4,4 +4,4 @@ token.json
 __pycache__/
 python-boleto/__pycache__/
 boleto-qr.html
-boleto-gerado.pdf
+boleto_gerado.pdf

@@ -275,9 +275,16 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
         for campo_id, valor in campos.items():
             html = substituir_campo_por_id(html, campo_id, valor)
 
-        # Não salva o HTML, passa ele para a API
+        status_boleto = dados.get("statusHttp", "")
+
+        if status_boleto == 200:
+            status_final = "success"
+        else:
+            status_final = "failed"
+
+        # Não salva o HTML, passa ele para a API, junto com o status e os dados de saída do boleto
         return {
-            "status": "success",
+            "status": status_final,
             "boleto_html": html,
             "dados_bradesco_api": dados # retorna os dados da API
         }

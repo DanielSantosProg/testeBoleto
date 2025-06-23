@@ -2,7 +2,7 @@ const fs = require("fs");
 const axios = require("axios");
 const path = require("path");
 
-const API_URL = "http://localhost:3000/gerar_boleto"; // Endereço para o post do server
+const API_URL = "http://localhost:3000/gerar_boleto"; // Endereço para o endpoint de geração de boleto
 
 const dados_para_boleto = {
   ctitloCobrCdent: "12345678901",
@@ -117,9 +117,12 @@ async function testarGeracaoBoleto() {
       responseType: "arraybuffer",
     });
 
+    const status = response.headers["boleto-status"];
     const contentType = response.headers["content-type"];
     const identificador = Date.now();
     const filename = `boleto_${identificador}.pdf`;
+
+    console.log("Status do boleto:", status);
 
     if (contentType.includes("application/pdf")) {
       fs.writeFileSync(path.join(__dirname, filename), response.data);
