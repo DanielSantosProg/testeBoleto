@@ -213,7 +213,7 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
         valor_do_boleto_string = dados.get("valMoeda10", "0")
         try:
             valor_float = int(valor_do_boleto_string) / 100.0
-            valor_format = f'R$ {valor_float:.2f}'.replace('.', ',')
+            valor_format = "R${:,.2f}".format(valor_float).replace(".","*").replace(",",".").replace("*",",")
         except ValueError:
             valor_float = 0.0
             valor_format = '0,00'

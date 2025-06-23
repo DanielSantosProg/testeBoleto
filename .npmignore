@@ -1,0 +1,7 @@
+.env
+token.json
+*.pyc
+__pycache__/
+python-boleto/__pycache__/
+boleto-qr.html
+boleto-gerado.pdf

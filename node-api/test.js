@@ -2,7 +2,7 @@ const fs = require("fs");
 const axios = require("axios");
 const path = require("path");
 
-const API_URL = "http://localhost:3000/gerar_boleto"; // Porta conforme seu app Node atual
+const API_URL = "http://localhost:3000/gerar_boleto"; // Endereço para o post do server
 
 const dados_para_boleto = {
   ctitloCobrCdent: "12345678901",
@@ -23,11 +23,11 @@ const dados_para_boleto = {
   tipoRegistro: "001",
   cprodtServcOper: "00000000",
   ctitloCliCdent: "SEUNUMERO1234567890123",
-  demisTitloCobr: "04.09.2023",
-  dvctoTitloCobr: "11.12.2024",
+  demisTitloCobr: "01.01.2024",
+  dvctoTitloCobr: "11.08.2025",
   cidtfdTpoVcto: "0",
   cindcdEconmMoeda: "00006",
-  vnmnalTitloCobr: "5000",
+  vnmnalTitloCobr: "115832",
   qmoedaNegocTitlo: "00000000000000000",
   cespceTitloCobr: "25",
   cindcdAceitSacdo: "N",
@@ -118,9 +118,8 @@ async function testarGeracaoBoleto() {
     });
 
     const contentType = response.headers["content-type"];
-    const contentDisposition = response.headers["content-disposition"] || "";
-    const filenameMatch = contentDisposition.match(/filename="(.+?)"/);
-    const filename = filenameMatch ? filenameMatch[1] : "boleto_gerado.pdf";
+    const identificador = Date.now();
+    const filename = `boleto_${identificador}.pdf`;
 
     if (contentType.includes("application/pdf")) {
       fs.writeFileSync(path.join(__dirname, filename), response.data);
