@@ -117,6 +117,8 @@ async function testarGeracaoBoleto() {
       responseType: "arraybuffer",
     });
 
+    console.log(response.data);
+
     const status = response.headers["boleto-status"];
     const contentType = response.headers["content-type"];
     const identificador = Date.now();
