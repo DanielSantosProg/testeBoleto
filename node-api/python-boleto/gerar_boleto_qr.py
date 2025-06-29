@@ -282,11 +282,12 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
         else:
             status_final = "failed"
 
-        # Não salva o HTML, passa ele para a API, junto com o status e os dados de saída do boleto
+        # Não salva o HTML, passa ele para a API, junto com o status, código de barras e os dados de saída do boleto
         return {
             "status": status_final,
+            "cod_barras": cod_barras_decoded, # número do código de barras para inserção no banco
             "boleto_html": html,
-            "dados_bradesco_api": dados # retorna os dados da API
+            "dados_bradesco_api": dados, # retorna os dados da API
         }
     except Exception as e:
         print(f"Erro inesperado na geração do boleto: {e}")

@@ -3,34 +3,17 @@ const sql = require("mssql");
 const getToken = require("./gerarToken");
 const path = require("path");
 
-async function gerarBoleto(payload) {
+async function gerarBoleto(payload, CAMINHO_CRT, SENHA_CRT) {
   const token = await getToken();
   if (!token) throw new Error("Erro ao obter token");
-
-  const pool = await sql.connect({
-    server: process.env.DB_SERVER,
-    database: process.env.DB_DATABASE,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    options: {
-      encrypt: false,
-      trustServerCertificate: true,
-    },
-  });
-
-  const db_data = await pool
-    .request()
-    .query(
-      "SELECT CAMINHO_CRT, SENHA_CRT FROM API_PIX_CADASTRO_DE_CONTA WHERE CODBANCO = '237'"
-    );
-
-  const { CAMINHO_CRT, SENHA_CRT } = db_data.recordset[0];
 
   return new Promise((resolve, reject) => {
     const python = spawn("python", [
       path.join(__dirname, "python-boleto", "cli.py"),
     ]);
     const dados = { payload, token, pfxPath: CAMINHO_CRT, senha: SENHA_CRT };
+    console.log(dados);
+
     let stdout = "",
       stderr = "";
 

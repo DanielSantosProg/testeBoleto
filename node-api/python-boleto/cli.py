@@ -25,6 +25,7 @@ def main():
 
         print(json.dumps({
             "status": resultado["status"],
+            "cod_barras": resultado["cod_barras"],
             "boleto_html": resultado["boleto_html"],
             "dados_bradesco_api": resultado["dados_bradesco_api"]
         }))

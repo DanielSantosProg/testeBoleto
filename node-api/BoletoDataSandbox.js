@@ -9,20 +9,8 @@ function formatDate(data) {
   return `${dia}.${mes}.${ano}`;
 }
 
-async function fetchDbData(id) {
-  let pool;
+async function fetchDbData(id, pool) {
   try {
-    pool = await sql.connect({
-      server: process.env.DB_SERVER,
-      database: process.env.DB_DATABASE,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      options: {
-        encrypt: false,
-        trustServerCertificate: true,
-      },
-    });
-
     const dataSelect = await pool.request().input("id", sql.Int, id).query(`
       WITH Contacts AS (
           SELECT *, ROW_NUMBER() OVER (PARTITION BY COR_CON_CLI_ID ORDER BY COR_CON_ID ASC) as cont 
@@ -125,7 +113,7 @@ async function fetchDbData(id) {
     } = newData;
 
     const payload = {
-      ctitloCobrCdent: String(dupDocumento ?? "0"),
+      ctitloCobrCdent: String(nossoNumero ?? "0"),
       registrarTitulo: "1",
       codUsuario: "APISERVIC",
       nroCpfCnpjBenef: String(empresaCnpj ?? "").substring(0, 8),
@@ -236,8 +224,6 @@ async function fetchDbData(id) {
   } catch (error) {
     console.error("Ocorreu um erro ao pegar os dados:", error);
     throw error;
-  } finally {
-    if (pool && pool.connected) await pool.close();
   }
 }
 
