@@ -4,9 +4,7 @@ const path = require("path");
 
 const API_URL = "http://localhost:3000/gerar_boletos";
 
-async function testarGeracaoBoletos() {
-  const idsParaGerar = [8955, 8955, 8955];
-
+async function gerarBoletos(idsParaGerar) {
   try {
     console.log("Enviando requisição POST para:", API_URL);
 
@@ -59,4 +57,29 @@ async function testarGeracaoBoletos() {
   }
 }
 
-testarGeracaoBoletos();
+// Executa se chamado diretamente pela linha de comando
+if (require.main === module) {
+  const args = process.argv.slice(2);
+  if (args.length === 0) {
+    console.error(
+      "Por favor, informe pelo menos um ID de boleto como argumento."
+    );
+    process.exit(1);
+  }
+  // Converte argumentos para números e filtra inválidos
+  const ids = args.map((id) => parseInt(id)).filter((id) => !isNaN(id));
+
+  if (ids.length === 0) {
+    console.error("Nenhum ID válido informado.");
+    process.exit(1);
+  }
+
+  gerarBoletos(ids).catch((err) => {
+    console.error("Erro ao gerar boletos:", err);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  gerarBoletos,
+};

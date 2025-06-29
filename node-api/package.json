@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "boleto-teste": "node gerarPdf.js"
+    "gerar-boletos": "node gerarPdf.js"
   },
   "keywords": [
     "boleto",
