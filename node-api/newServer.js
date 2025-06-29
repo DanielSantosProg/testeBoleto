@@ -6,29 +6,12 @@ const sql = require("mssql");
 require("dotenv").config();
 
 const app = express();
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "100mb" }));
 
-app.post("/gerar_boleto", async (req, res) => {
-  const { id } = req.body;
-  if (!id)
-    return res.status(400).json({ error: "ID do boleto não foi fornecido." });
-
-  let pool;
+// Função para processar um boleto individualmente, recebendo o browser Puppeteer aberto
+async function processarBoleto(id, pool, browser) {
   let transaction;
-
   try {
-    pool = await sql.connect({
-      server: process.env.DB_SERVER,
-      database: process.env.DB_DATABASE,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      options: {
-        encrypt: false,
-        trustServerCertificate: true,
-      },
-    });
-
-    // Cria um transaction para garantir que todas as inserções e updates serão feitos.
     transaction = new sql.Transaction(pool);
     await transaction.begin();
 
@@ -67,16 +50,15 @@ app.post("/gerar_boleto", async (req, res) => {
     `);
 
     if (!dadosIniciais.recordset.length) {
-      throw new Error("Duplicata não encontrada para o ID informado.");
+      throw new Error(`Duplicata não encontrada para o ID ${id}.`);
     }
 
     const data = dadosIniciais.recordset[0];
 
     // Gera o payload do boleto
     const payload = await fetchDbData(id, pool);
-    console.log("Payload enviado para gerarBoleto:", payload);
 
-    // Gera o boleto em html
+    // Gera os dados do boleto e o html
     const resultado = await gerarBoleto(
       payload,
       data.caminhoCrt,
@@ -84,41 +66,55 @@ app.post("/gerar_boleto", async (req, res) => {
     );
     const { status, cod_barras, boleto_html, dados_bradesco_api } = resultado;
 
-    console.log(dados_bradesco_api);
+    // Define strings para o SQL
+    const nossoNumeroValue =
+      dados_bradesco_api.ctitloCobrCdent !== undefined &&
+      dados_bradesco_api.ctitloCobrCdent !== null
+        ? String(dados_bradesco_api.ctitloCobrCdent).substring(0, 11)
+        : payload.ctitloCobrCdent
+        ? String(payload.ctitloCobrCdent).substring(0, 11)
+        : "";
 
-    // Atualiza COR_CADASTRO_DE_DUPLICATAS com nosso número e código de barras
+    const linhaDigitavelValue = (dados_bradesco_api.linhaDig10 || "").substring(
+      0,
+      50
+    );
+    const pixQrCodeValue = (dados_bradesco_api.wqrcdPdraoMercd || "").substring(
+      0,
+      500
+    );
+    const codBarrasValue = cod_barras || "";
+
+    // Atualiza o COR_CADASTRO_DE_DUPLICATAS
     const request2 = new sql.Request(transaction);
     await request2
       .input("id", sql.Int, data.duplicataId)
-      .input("nossoNumero", sql.Int, dados_bradesco_api.ctitloCobrCdent)
-      .input("codBarras", sql.VarChar(50), cod_barras || "").query(`
-    UPDATE COR_CADASTRO_DE_DUPLICATAS
-    SET COR_DUP_PROTOCOLO = @nossoNumero,
-        COR_DUP_COD_BARRAS = @codBarras
-    WHERE COR_DUP_ID = @id
-  `);
+      .input("nossoNumero", sql.VarChar(50), nossoNumeroValue)
+      .input("codBarras", sql.VarChar(50), codBarrasValue).query(`
+        UPDATE COR_CADASTRO_DE_DUPLICATAS
+        SET COR_DUP_PROTOCOLO = @nossoNumero,
+            COR_DUP_COD_BARRAS = @codBarras
+        WHERE COR_DUP_ID = @id
+      `);
 
-    // 5. Incrementar NOSSONUMERO em API_BOLETO_CAD_CONVENIO
+    // Incrementa o NOSSONUMERO em API_BOLETO_CAD_CONVENIO
     const request3 = new sql.Request(transaction);
     await request3.input("idConta", sql.Int, data.idConta).query(`
         UPDATE API_BOLETO_CAD_CONVENIO
-        SET NOSSONUMERO = NOSSONUMERO + 1
+        SET NOSSONUMERO = ISNULL(NOSSONUMERO, 0) + 1
         WHERE IDCONTA = @idConta
       `);
 
-    // 6. Inserir registro em COR_BOLETO_BANCARIO
+    // Insere um registro em COR_BOLETO_BANCARIO com os dados do boleto
     const request4 = new sql.Request(transaction);
     await request4
       .input("dataVenc", sql.Date, data.dataVencimento)
       .input("nDoc", sql.Int, data.numeroDocumento)
       .input("dataProcess", sql.DateTime, new Date())
       .input("valor", sql.Float, data.dupValor)
-      .input(
-        "linhaDigitavel",
-        sql.VarChar(60),
-        dados_bradesco_api.linhaDig10 || ""
-      )
-      .input("codigoBarra", sql.VarChar(50), cod_barras || "")
+      .input("linhaDigitavel", sql.VarChar(60), linhaDigitavelValue)
+      .input("codigoBarra", sql.VarChar(50), codBarrasValue)
+      .input("nossoNumero", sql.VarChar(50), nossoNumeroValue)
       .input("idDuplicata", sql.Int, data.duplicataId)
       .input("anoBoleto", sql.Int, new Date().getFullYear())
       .input("idContaCorrente", sql.Int, data.idConta)
@@ -129,12 +125,8 @@ app.post("/gerar_boleto", async (req, res) => {
       .input("idCliente", sql.Int, data.idCliente)
       .input("idEmpresa", sql.Int, data.idEmpresa)
       .input("parcela", sql.Int, data.parcela || 1)
+      .input("pixQrCode", sql.VarChar(500), pixQrCodeValue)
       .input("numBoleto", sql.Int, parseInt(dados_bradesco_api.snumero10))
-      .input(
-        "pixQrCode",
-        sql.VarChar(500),
-        dados_bradesco_api.wqrcdPdraoMercd || ""
-      )
       .input("statusBol", sql.Int, dados_bradesco_api.codStatus10).query(`
         INSERT INTO COR_BOLETO_BANCARIO (
           DATA_VENC, N_DOC, DATA_PROCESS, VALOR, LINHA_DIGITAVEL, CODIGO_BARRA,
@@ -143,47 +135,86 @@ app.post("/gerar_boleto", async (req, res) => {
           PARCELA, PIX_QRCODE, STATUS_BOL, N_BOLETO
         ) VALUES (
           @dataVenc, @nDoc, @dataProcess, @valor, @linhaDigitavel, @codigoBarra,
-          '46576895814', @idDuplicata, @anoBoleto, @idContaCorrente, @ativo,
+          @nossoNumero, @idDuplicata, @anoBoleto, @idContaCorrente, @ativo,
           @selecionado, @dataCadastro, @idUsuCadastro, @idCliente, @idEmpresa,
           @parcela, @pixQrCode, @statusBol, @numBoleto
         )
       `);
 
-    // 7. Commit da transação
+    // Commita a transação
     await transaction.commit();
 
-    // 8. Gerar PDF com Puppeteer
-    const browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-
+    // Gera o PDF com Puppeteer usando browser já aberto
     const page = await browser.newPage();
     await page.setContent(boleto_html, { waitUntil: "networkidle0" });
+    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+    await page.close();
 
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-    });
-
-    await browser.close();
-
-    // 9. Retornar PDF e status
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "attachment; filename=boleto.pdf");
-    res.setHeader("boleto-status", status);
-    res.send(pdfBuffer);
+    return {
+      id,
+      status,
+      pdfBase64: Buffer.from(pdfBuffer).toString("base64"),
+    };
   } catch (error) {
     if (transaction) {
       try {
         await transaction.rollback();
       } catch (rollbackError) {
-        console.error("Erro ao dar rollback:", rollbackError);
+        console.error(`Erro ao dar rollback para ID ${id}:`, rollbackError);
       }
     }
-    console.error("Erro ao gerar boleto:", error);
-    res.status(500).json({ error: error.message, stack: error.stack });
+    console.error(`Erro no processamento do boleto ID ${id}:`, error);
+    return {
+      id,
+      error: error.message,
+    };
+  }
+}
+
+app.post("/gerar_boletos", async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res
+      .status(400)
+      .json({ error: "Array de IDs não fornecido ou vazio." });
+  }
+
+  let pool;
+  let browser;
+  try {
+    pool = await sql.connect({
+      server: process.env.DB_SERVER,
+      database: process.env.DB_DATABASE,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      options: {
+        encrypt: false,
+        trustServerCertificate: true,
+      },
+    });
+
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    // Processa todos os boletos em paralelo com limite
+    const limit = 5;
+    const results = [];
+    for (let i = 0; i < ids.length; i += limit) {
+      const chunk = ids.slice(i, i + limit);
+      const chunkResults = await Promise.all(
+        chunk.map((id) => processarBoleto(id, pool, browser))
+      );
+      results.push(...chunkResults);
+    }
+
+    res.json({ resultados: results });
+  } catch (error) {
+    console.error("Erro geral ao gerar boletos:", error);
+    res.status(500).json({ error: error.message });
   } finally {
+    if (browser) await browser.close();
     if (pool) await pool.close();
   }
 });
