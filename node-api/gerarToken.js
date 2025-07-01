@@ -13,28 +13,8 @@ if (!fs.existsSync(tokenDir)) {
   fs.mkdirSync(tokenDir, { recursive: true });
 }
 
-async function gerarNovoToken() {
+async function gerarNovoToken(CAMINHO_CRT, SENHA_CRT, CLIENTID, CLIENTSECRET) {
   try {
-    const pool = await sql.connect({
-      server: process.env.DB_SERVER,
-      database: process.env.DB_DATABASE,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      options: {
-        encrypt: false,
-        trustServerCertificate: true,
-      },
-    });
-
-    const db_data = await pool
-      .request()
-      .query(
-        "SELECT CLIENTID, CLIENTSECRET, CAMINHO_CRT, SENHA_CRT FROM API_PIX_CADASTRO_DE_CONTA WHERE CODBANCO = '237'"
-      );
-
-    const { CLIENTID, CLIENTSECRET, CAMINHO_CRT, SENHA_CRT } =
-      db_data.recordset[0];
-
     const httpsAgent = new https.Agent({
       pfx: fs.readFileSync(path.resolve(CAMINHO_CRT)),
       passphrase: SENHA_CRT,
@@ -75,7 +55,7 @@ async function gerarNovoToken() {
   }
 }
 
-async function getToken() {
+async function getToken(CAMINHO_CRT, SENHA_CRT, CLIENTID, CLIENTSECRET) {
   try {
     if (fs.existsSync(tokenFile)) {
       const data = JSON.parse(fs.readFileSync(tokenFile, "utf8"));
@@ -93,7 +73,7 @@ async function getToken() {
     console.warn("Erro ao ler token. Gerando novo...");
   }
 
-  return await gerarNovoToken();
+  return await gerarNovoToken(CAMINHO_CRT, SENHA_CRT, CLIENTID, CLIENTSECRET);
 }
 
 module.exports = getToken;

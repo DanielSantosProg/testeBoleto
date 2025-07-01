@@ -11,6 +11,7 @@ app.use(express.json({ limit: "100mb" }));
 // Função para processar um boleto individualmente, recebendo o browser Puppeteer aberto
 async function processarBoleto(id, pool, browser) {
   let transaction;
+  let page;
   try {
     transaction = new sql.Transaction(pool);
     await transaction.begin();
@@ -29,6 +30,9 @@ async function processarBoleto(id, pool, browser) {
         D.COR_DUP_NUMERO_ORDEM AS parcela,
         D.COR_DUP_CLIENTE AS idCliente,
         D.COR_DUP_IDEMPRESA AS idEmpresa,
+        D.COR_DUP_USU_CADASTROU AS usuCadastro,
+        B.CLIENTID AS clientId,
+        B.CLIENTSECRET AS clientSecret,
         B.CAMINHO_CRT AS caminhoCrt,
         B.SENHA_CRT AS senhaCrt,
         B.API_PIX_ID AS idConta,
@@ -55,79 +59,29 @@ async function processarBoleto(id, pool, browser) {
 
     const data = dadosIniciais.recordset[0];
 
-    // Gera o payload do boleto
-    const payload = await fetchDbData(id, pool);
-
-    // Gera os dados do boleto e o html
-    const resultado = await gerarBoleto(
-      payload,
-      data.caminhoCrt,
-      data.senhaCrt
-    );
-    const { status, cod_barras, boleto_html, dados_bradesco_api } = resultado;
-
-    // Define strings para o SQL
-    const nossoNumeroValue =
-      dados_bradesco_api.ctitloCobrCdent !== undefined &&
-      dados_bradesco_api.ctitloCobrCdent !== null
-        ? String(dados_bradesco_api.ctitloCobrCdent).substring(0, 11)
-        : payload.ctitloCobrCdent
-        ? String(payload.ctitloCobrCdent).substring(0, 11)
-        : "";
-
-    const linhaDigitavelValue = (dados_bradesco_api.linhaDig10 || "").substring(
-      0,
-      50
-    );
-    const pixQrCodeValue = (dados_bradesco_api.wqrcdPdraoMercd || "").substring(
-      0,
-      500
-    );
-    const codBarrasValue = cod_barras || "";
-
-    // Atualiza o COR_CADASTRO_DE_DUPLICATAS
+    // Insere um registro em COR_BOLETO_BANCARIO com os dados do boleto
     const request2 = new sql.Request(transaction);
     await request2
-      .input("id", sql.Int, data.duplicataId)
-      .input("nossoNumero", sql.VarChar(50), nossoNumeroValue)
-      .input("codBarras", sql.VarChar(50), codBarrasValue).query(`
-        UPDATE COR_CADASTRO_DE_DUPLICATAS
-        SET COR_DUP_PROTOCOLO = @nossoNumero,
-            COR_DUP_COD_BARRAS = @codBarras
-        WHERE COR_DUP_ID = @id
-      `);
-
-    // Incrementa o NOSSONUMERO em API_BOLETO_CAD_CONVENIO
-    const request3 = new sql.Request(transaction);
-    await request3.input("idConta", sql.Int, data.idConta).query(`
-        UPDATE API_BOLETO_CAD_CONVENIO
-        SET NOSSONUMERO = ISNULL(NOSSONUMERO, 0) + 1
-        WHERE IDCONTA = @idConta
-      `);
-
-    // Insere um registro em COR_BOLETO_BANCARIO com os dados do boleto
-    const request4 = new sql.Request(transaction);
-    await request4
       .input("dataVenc", sql.Date, data.dataVencimento)
       .input("nDoc", sql.Int, data.numeroDocumento)
       .input("dataProcess", sql.DateTime, new Date())
-      .input("valor", sql.Float, data.dupValor)
-      .input("linhaDigitavel", sql.VarChar(60), linhaDigitavelValue)
-      .input("codigoBarra", sql.VarChar(50), codBarrasValue)
-      .input("nossoNumero", sql.VarChar(50), nossoNumeroValue)
+      .input("valor", sql.Float, parseFloat(data.dupValor))
+      .input("linhaDigitavel", sql.VarChar(60), "0")
+      .input("codigoBarra", sql.VarChar(50), "0")
+      .input("nossoNumero", sql.VarChar(50), "0")
       .input("idDuplicata", sql.Int, data.duplicataId)
       .input("anoBoleto", sql.Int, new Date().getFullYear())
       .input("idContaCorrente", sql.Int, data.idConta)
       .input("ativo", sql.VarChar(1), "S")
       .input("selecionado", sql.VarChar(1), "N")
       .input("dataCadastro", sql.DateTime, new Date())
-      .input("idUsuCadastro", sql.Int, 0) // Ajuste conforme sua API
+      .input("idUsuCadastro", sql.Int, data.usuCadastro)
       .input("idCliente", sql.Int, data.idCliente)
       .input("idEmpresa", sql.Int, data.idEmpresa)
       .input("parcela", sql.Int, data.parcela || 1)
-      .input("pixQrCode", sql.VarChar(500), pixQrCodeValue)
-      .input("numBoleto", sql.Int, parseInt(dados_bradesco_api.snumero10))
-      .input("statusBol", sql.Int, dados_bradesco_api.codStatus10).query(`
+      .input("pixQrCode", sql.VarChar(500), "0")
+      .input("numBoleto", sql.Int, 0)
+      .input("statusBol", sql.Int, 0).query(`
         INSERT INTO COR_BOLETO_BANCARIO (
           DATA_VENC, N_DOC, DATA_PROCESS, VALOR, LINHA_DIGITAVEL, CODIGO_BARRA,
           NOSSO_NUMERO, ID_DUPLICATA, ANO_BOLETO, ID_CONTA_CORRENTE, ATIVO,
@@ -141,11 +95,86 @@ async function processarBoleto(id, pool, browser) {
         )
       `);
 
-    // Commita a transação
-    await transaction.commit();
+    // Gera o payload do boleto
+    const payload = await fetchDbData(id, pool);
+
+    // Gera os dados do boleto e o html
+    const resultado = await gerarBoleto(
+      payload,
+      data.caminhoCrt,
+      data.senhaCrt,
+      data.clientId,
+      data.clientSecret
+    );
+    const { status, cod_barras, boleto_html, dados_bradesco_api } = resultado;
+
+    if (!dados_bradesco_api) {
+      throw new Error("Dados do bradesco incorretos.");
+    }
+
+    if (resultado) {
+      // Define strings para o SQL
+      const nossoNumeroValue =
+        dados_bradesco_api.ctitloCobrCdent !== undefined &&
+        dados_bradesco_api.ctitloCobrCdent !== null
+          ? String(dados_bradesco_api.ctitloCobrCdent).substring(0, 11)
+          : payload.ctitloCobrCdent
+          ? String(payload.ctitloCobrCdent).substring(0, 11)
+          : "";
+
+      const linhaDigitavelValue = (
+        dados_bradesco_api.linhaDig10 || "0"
+      ).substring(0, 50);
+      const pixQrCodeValue = (
+        dados_bradesco_api.wqrcdPdraoMercd || "0"
+      ).substring(0, 500);
+      const codBarrasValue = cod_barras || "0";
+
+      // Atualiza o COR_CADASTRO_DE_DUPLICATAS
+      const request3 = new sql.Request(transaction);
+      await request3
+        .input("id", sql.Int, data.duplicataId)
+        .input("nossoNumero", sql.VarChar(50), nossoNumeroValue)
+        .input("codBarras", sql.VarChar(50), codBarrasValue).query(`
+          UPDATE COR_CADASTRO_DE_DUPLICATAS
+          SET COR_DUP_PROTOCOLO = @nossoNumero,
+              COR_DUP_COD_BARRAS = @codBarras
+          WHERE COR_DUP_ID = @id
+        `);
+
+      // Incrementa o NOSSONUMERO em API_BOLETO_CAD_CONVENIO
+      const request4 = new sql.Request(transaction);
+      await request4.input("idConta", sql.Int, data.idConta).query(`
+          UPDATE API_BOLETO_CAD_CONVENIO
+          SET NOSSONUMERO = ISNULL(NOSSONUMERO, 0) + 1
+          WHERE IDCONTA = @idConta
+        `);
+
+      const request5 = new sql.Request(transaction);
+      await request5
+        .input("idDup", sql.Int, data.duplicataId)
+        .input("linhaDigitavel", sql.VarChar(60), linhaDigitavelValue)
+        .input("codigoBarra", sql.VarChar(50), codBarrasValue)
+        .input("nossoNumero", sql.VarChar(50), nossoNumeroValue)
+        .input("pixQrCode", sql.VarChar(500), pixQrCodeValue)
+        .input("numBoleto", sql.Int, parseInt(dados_bradesco_api.snumero10))
+        .input("statusBol", sql.Int, dados_bradesco_api.codStatus10)
+        .query(`UPDATE COR_BOLETO_BANCARIO 
+                SET LINHA_DIGITAVEL = @linhaDigitavel,
+                CODIGO_BARRA = @codigoBarra,
+                NOSSO_NUMERO = @nossoNumero,
+                PIX_QRCODE = @pixQrCode,
+                N_BOLETO = @numBoleto,
+                STATUS_BOL = @statusBol
+                WHERE ID_DUPLICATA = @idDup
+              `);
+
+      // Commita a transação
+      await transaction.commit();
+    }
 
     // Gera o PDF com Puppeteer usando browser já aberto
-    const page = await browser.newPage();
+    page = await browser.newPage();
     await page.setContent(boleto_html, { waitUntil: "networkidle0" });
     const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
     await page.close();
@@ -168,6 +197,25 @@ async function processarBoleto(id, pool, browser) {
       id,
       error: error.message,
     };
+  } finally {
+    if (page) {
+      try {
+        // Verifica se a página ainda está aberta antes de tentar fechar
+        if (!page.isClosed()) {
+          await page.close();
+        }
+      } catch (error) {
+        // Trata especificamente o erro "No target with given id"
+        if (
+          error.message.includes("No target with given id") ||
+          error.message.includes("Target closed")
+        ) {
+          console.log(`Página já fechada para o boleto ID ${id}`);
+        } else {
+          console.error(`Erro ao fechar página do boleto ID ${id}:`, error);
+        }
+      }
+    }
   }
 }
 
@@ -181,6 +229,8 @@ app.post("/gerar_boletos", async (req, res) => {
 
   let pool;
   let browser;
+  const results = [];
+
   try {
     pool = await sql.connect({
       server: process.env.DB_SERVER,
@@ -198,15 +248,12 @@ app.post("/gerar_boletos", async (req, res) => {
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
-    // Processa todos os boletos em paralelo com limite
-    const limit = 5;
-    const results = [];
-    for (let i = 0; i < ids.length; i += limit) {
-      const chunk = ids.slice(i, i + limit);
-      const chunkResults = await Promise.all(
-        chunk.map((id) => processarBoleto(id, pool, browser))
-      );
-      results.push(...chunkResults);
+    // Processa sequencialmente para garantir a ordem
+    for (const id of ids) {
+      // Aguarda o processamento do boleto atual antes de continuar
+      const resultado = await processarBoleto(id, pool, browser);
+      console.log(`Boleto de id ${id} processado.`);
+      results.push(resultado);
     }
 
     res.json({ resultados: results });
