@@ -219,6 +219,48 @@ async function processarBoleto(id, pool, browser) {
   }
 }
 
+async function defParcelas(ids) {
+  if (!ids || ids.length === 0) return [];
+
+  const request6 = new sql.Request();
+
+  // Monta parâmetros dinâmicos: @id0, @id1, ...
+  const params = ids.map((id, index) => {
+    const paramName = `id${index}`;
+    request6.input(paramName, sql.Int, id);
+    return `@${paramName}`;
+  });
+
+  const query = `
+    SELECT COR_DUP_ID, COR_DUP_DOCUMENTO, COR_DUP_NUMERO_ORDEM 
+    FROM COR_CADASTRO_DE_DUPLICATAS 
+    WHERE COR_DUP_ID IN (${params.join(",")})
+  `;
+
+  const result = await request6.query(query);
+  return result.recordset;
+}
+
+// Ordena as Duplicatas para serem ordenadas por número da parcela, ordenando duplicatas de mesmo documento seguidamente
+function OrderIds(ids) {
+  ids.sort((a, b) => {
+    if (a.COR_DUP_DOCUMENTO !== b.COR_DUP_DOCUMENTO) {
+      return a.COR_DUP_DOCUMENTO - b.COR_DUP_DOCUMENTO;
+    }
+    const ordemA =
+      a.COR_DUP_NUMERO_ORDEM === null
+        ? -Infinity
+        : Number(a.COR_DUP_NUMERO_ORDEM);
+    const ordemB =
+      b.COR_DUP_NUMERO_ORDEM === null
+        ? -Infinity
+        : Number(b.COR_DUP_NUMERO_ORDEM);
+
+    return ordemA - ordemB;
+  });
+  return ids;
+}
+
 app.post("/gerar_boletos", async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
@@ -248,8 +290,18 @@ app.post("/gerar_boletos", async (req, res) => {
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
+    // Pega os dados de parcelas e número do documento de cada duplicata
+    const dadosNumDoc = await defParcelas(ids);
+
+    // Cria um array para colocar os ids de forma ordenada
+    let orderedIds = [];
+
+    const sortedDups = OrderIds(dadosNumDoc);
+
+    sortedDups.forEach((item) => orderedIds.push(item.COR_DUP_ID));
+
     // Processa sequencialmente para garantir a ordem
-    for (const id of ids) {
+    for (const id of orderedIds) {
       // Aguarda o processamento do boleto atual antes de continuar
       const resultado = await processarBoleto(id, pool, browser);
       console.log(`Boleto de id ${id} processado.`);
