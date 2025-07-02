@@ -38,16 +38,21 @@ async function gerarBoleto(
     });
 
     python.on("close", (code) => {
-      if (code !== 0 || stdout.startsWith("[ERROR]")) {
-        const erro = stdout.startsWith("[ERROR]")
-          ? stdout.replace("[ERROR]", "").trim()
-          : stderr.trim();
-        return reject(new Error(erro));
-      }
-
       try {
         const parsed = JSON.parse(stdout);
-        resolve(parsed); // Agora é um objeto completo json
+
+        if (parsed.error) {
+          // Se o JSON tem a chave error, rejeita com essa mensagem
+          return reject(new Error(parsed.error));
+        }
+
+        if (code !== 0) {
+          return reject(
+            new Error(`Processo Python finalizado com código ${code}`)
+          );
+        }
+
+        resolve(parsed);
       } catch (err) {
         reject(
           new Error("Erro ao interpretar resposta do Python: " + err.message)

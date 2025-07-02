@@ -28,6 +28,11 @@ async function gerarBoletos(idsParaGerar) {
         continue;
       }
 
+      if (!resultado.pdfBase64) {
+        console.error(`PDF não disponível para o boleto ID ${resultado.id}`);
+        continue;
+      }
+
       let buffer;
 
       if (typeof resultado.pdfBase64 === "string") {

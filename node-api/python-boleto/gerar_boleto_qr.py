@@ -4,6 +4,7 @@ import qrcode
 import qrcode.image.svg
 import requests
 import requests_pkcs12
+import sys
 
 from io import BytesIO
 from barcode import ITF
@@ -52,11 +53,13 @@ def registrar_boleto(auth_token, dados_payload, pfx_path, senha):
         boleto_response.raise_for_status()
         return boleto_response.json()
     except requests.exceptions.RequestException as e:
-        print(f"Erro na requisição para a API do Bradesco: {e}")
+        # Escreve a mensagem de erro no stderr para debug (opcional)
+        sys.stderr.write(f"Erro na requisição para a API do Bradesco: {e}\n")
         if hasattr(e, 'response') and e.response is not None:
-            print(f"Status Code: {e.response.status_code}")
-            print(f"Response Text: {e.response.text}")
-        return None
+            sys.stderr.write(f"Status Code: {e.response.status_code}\n")
+            sys.stderr.write(f"Response Text: {e.response.text}\n")
+        # Retorna JSON com erro para o stdout (que será capturado pelo Node.js)
+        return {"error": f"Erro na requisição para a API do Bradesco: {str(e)}"}
 
 # Função para Criar o código de barras em SVG base64
 def base64_svg(codigo_de_barras: str) -> str:
@@ -125,7 +128,6 @@ def decode_cod_bar(cod_bar_str, ebcdic_dict):
         if segment in ebcdic_dict:
             decoded += ebcdic_dict[segment]
         else:
-            print(f"Não reconhecido: {segment}") 
             raise ValueError(f"Segmento de código de barras não reconhecido: {segment}")
     return decoded
 
@@ -161,13 +163,10 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
 
         # Cancela a criação do boleto se não retornar os dados dele.
         if not dados:
-            print("Erro: Não foi possível registrar o boleto na API do Bradesco.")
             return {"error": "Não foi possível registrar o boleto."}
 
         # Código de barras padrão FEBRABAN
-        codigo_de_barras = dados.get("codBarras10", "")
-        if not codigo_de_barras:
-            print("Aviso: 'codBarras10' não encontrado na resposta da API.")            
+        codigo_de_barras = dados.get("codBarras10", "")    
         
         cod_barras_decoded = decode_cod_bar(codigo_de_barras, ebcdic_to_num)
         png_base64_barcode = base64_png(cod_barras_decoded)
@@ -177,10 +176,8 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
             with open("boleto-base.html", "r", encoding="utf-8") as f:
                 html = f.read()
         except FileNotFoundError:
-            print("Erro: Arquivo 'boleto-base.html' não encontrado. Certifique-se de que está no mesmo diretório ou caminho acessível.")
             return {"error": "Template HTML do boleto não encontrado."}
         except Exception as e:
-            print(f"Erro ao ler 'boleto-base.html': {e}")
             return {"error": f"Erro ao ler template HTML: {e}"}
 
         # Substitui o bloco do código de barras
@@ -268,7 +265,6 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
             qrcode_svg_base64 = gerar_qrcode_pix_svg_base64(pix_payload)
             html = substituir_qr_code(html, qrcode_svg_base64)
         else:
-            print("Aviso: Payload Pix (wqrcdPdraoMercd) não encontrado na resposta da API.")
             html = substituir_qr_code(html, "") # Substitui por vazio para remover a tag img
 
         # Substituição campo por campo
@@ -290,5 +286,4 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
             "dados_bradesco_api": dados, # retorna os dados da API
         }
     except Exception as e:
-        print(f"Erro inesperado na geração do boleto: {e}")
-        return {"error": f"Erro interno na geração do boleto: {e}"}
+        return {"error": f"Erro interno na geração do boleto: dados = {dados}, erro={e}"}

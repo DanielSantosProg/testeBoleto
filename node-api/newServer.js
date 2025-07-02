@@ -12,6 +12,7 @@ app.use(express.json({ limit: "100mb" }));
 async function processarBoleto(id, pool, browser) {
   let transaction;
   let page;
+  let resultado;
   try {
     transaction = new sql.Transaction(pool);
     await transaction.begin();
@@ -99,16 +100,22 @@ async function processarBoleto(id, pool, browser) {
     const payload = await fetchDbData(id, pool);
 
     // Gera os dados do boleto e o html
-    const resultado = await gerarBoleto(
+    resultado = await gerarBoleto(
       payload,
       data.caminhoCrt,
       data.senhaCrt,
       data.clientId,
       data.clientSecret
     );
+
+    // Verifica se a função Python retornou erro
+    if (resultado.error) {
+      throw new Error(`Erro na geração do boleto: ${resultado.error}`);
+    }
+
     const { status, cod_barras, boleto_html, dados_bradesco_api } = resultado;
 
-    if (!dados_bradesco_api) {
+    if (!dados_bradesco_api || Object.keys(dados_bradesco_api).length === 0) {
       throw new Error("Dados do bradesco incorretos.");
     }
 
@@ -169,7 +176,7 @@ async function processarBoleto(id, pool, browser) {
                 WHERE ID_DUPLICATA = @idDup
               `);
 
-      // Commita a transação
+      // Commit da transação
       await transaction.commit();
     }
 
@@ -192,20 +199,18 @@ async function processarBoleto(id, pool, browser) {
         console.error(`Erro ao dar rollback para ID ${id}:`, rollbackError);
       }
     }
-    console.error(`Erro no processamento do boleto ID ${id}:`, error);
     return {
       id,
       error: error.message,
+      pdfBase64: null,
     };
   } finally {
     if (page) {
       try {
-        // Verifica se a página ainda está aberta antes de tentar fechar
         if (!page.isClosed()) {
           await page.close();
         }
       } catch (error) {
-        // Trata especificamente o erro "No target with given id"
         if (
           error.message.includes("No target with given id") ||
           error.message.includes("Target closed")
@@ -215,6 +220,54 @@ async function processarBoleto(id, pool, browser) {
           console.error(`Erro ao fechar página do boleto ID ${id}:`, error);
         }
       }
+    }
+  }
+}
+
+async function processarBoletoComRetry(id, pool, browser, maxTentativas = 2) {
+  let tentativa = 0;
+  let resultado;
+
+  while (tentativa < maxTentativas) {
+    tentativa++;
+    try {
+      resultado = await processarBoleto(id, pool, browser);
+      if (!resultado.error) {
+        return resultado;
+      }
+      throw new Error(resultado.error);
+    } catch (error) {
+      const msgErro = error.message || "";
+
+      // Verifica se o erro contém a mensagem específica para retry
+      const deveTentarNovamente =
+        msgErro.includes("Erro na requisição para a API do Bradesco: 504") ||
+        msgErro.includes("Gateway Time-out");
+
+      if (!deveTentarNovamente) {
+        // Se o erro não for o esperado para retry, retorna imediatamente
+        return {
+          id,
+          error: msgErro,
+          pdfBase64: null,
+        };
+      }
+
+      console.warn(
+        `Tentativa ${tentativa} para boleto ID ${id} falhou com erro: ${msgErro}`
+      );
+
+      if (tentativa === maxTentativas) {
+        // Última tentativa, retorna erro
+        return {
+          id,
+          error: msgErro,
+          pdfBase64: null,
+        };
+      }
+
+      // espera crescente antes da próxima tentativa
+      await new Promise((res) => setTimeout(res, 500 * tentativa));
     }
   }
 }
@@ -232,7 +285,7 @@ async function defParcelas(ids) {
   });
 
   const query = `
-    SELECT COR_DUP_ID, COR_DUP_DOCUMENTO, COR_DUP_NUMERO_ORDEM 
+    SELECT COR_DUP_ID, COR_DUP_DOCUMENTO, COR_DUP_NUMERO_ORDEM, COR_DUP_PROTOCOLO 
     FROM COR_CADASTRO_DE_DUPLICATAS 
     WHERE COR_DUP_ID IN (${params.join(",")})
   `;
@@ -242,7 +295,7 @@ async function defParcelas(ids) {
 }
 
 // Ordena as Duplicatas para serem ordenadas por número da parcela, ordenando duplicatas de mesmo documento seguidamente
-function OrderIds(ids) {
+function OrderIds(ids, orderedIds) {
   ids.sort((a, b) => {
     if (a.COR_DUP_DOCUMENTO !== b.COR_DUP_DOCUMENTO) {
       return a.COR_DUP_DOCUMENTO - b.COR_DUP_DOCUMENTO;
@@ -258,7 +311,12 @@ function OrderIds(ids) {
 
     return ordemA - ordemB;
   });
-  return ids;
+  ids.forEach((item) => {
+    // Checa se já foi gerado boleto para a duplicata
+    if (!item.COR_DUP_PROTOCOLO) {
+      orderedIds.push(item.COR_DUP_ID);
+    }
+  });
 }
 
 app.post("/gerar_boletos", async (req, res) => {
@@ -296,19 +354,89 @@ app.post("/gerar_boletos", async (req, res) => {
     // Cria um array para colocar os ids de forma ordenada
     let orderedIds = [];
 
-    const sortedDups = OrderIds(dadosNumDoc);
+    OrderIds(dadosNumDoc, orderedIds);
 
-    sortedDups.forEach((item) => orderedIds.push(item.COR_DUP_ID));
+    if (orderedIds.length == 0) {
+      console.log("As duplicatas informadas já tiveram seus boletos gerados.");
+    }
 
     // Processa sequencialmente para garantir a ordem
     for (const id of orderedIds) {
       // Aguarda o processamento do boleto atual antes de continuar
-      const resultado = await processarBoleto(id, pool, browser);
+      const resultado = await processarBoletoComRetry(id, pool, browser);
       console.log(`Boleto de id ${id} processado.`);
       results.push(resultado);
     }
 
     res.json({ resultados: results });
+  } catch (error) {
+    console.error("Erro geral ao gerar boletos:", error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    if (browser) await browser.close();
+    if (pool) await pool.close();
+  }
+});
+
+app.get("/consulta_boleto", async (req, res) => {
+  const { id } = req.body;
+  if (!id) {
+    return res.status(400).json({ error: "ID não foi fornecido." });
+  }
+
+  let pool;
+  const resultGet = {};
+
+  try {
+    pool = await sql.connect({
+      server: process.env.DB_SERVER,
+      database: process.env.DB_DATABASE,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      options: {
+        encrypt: false,
+        trustServerCertificate: true,
+      },
+    });
+
+    const dadosDup = await request().input("id", sql.Int, id).query(`
+      SELECT
+        D.COR_DUP_ID AS duplicataId,
+        D.COR_CLI_BANCO AS codBanco,
+        D.COR_DUP_VALOR_DUPLICATA AS dupValor,
+        D.COR_DUP_TIPO AS dupTipo,
+        D.COR_DUP_DATA_EMISSAO AS dataEmissao,
+        D.COR_DUP_DATA_VENCIMENTO AS dataVencimento,
+        D.COR_DUP_DOCUMENTO AS numeroDocumento,
+        D.COR_DUP_NUMERO_ORDEM AS parcela,
+        D.COR_DUP_CLIENTE AS idCliente,
+        D.COR_DUP_IDEMPRESA AS idEmpresa,
+        D.COR_DUP_USU_CADASTROU AS usuCadastro,
+        B.CLIENTID AS clientId,
+        B.CLIENTSECRET AS clientSecret,
+        B.CAMINHO_CRT AS caminhoCrt,
+        B.SENHA_CRT AS senhaCrt,
+        B.API_PIX_ID AS idConta,
+        CO.CARTEIRA,
+        CO.PROTESTO,
+        CO.JUROS_DIA,
+        CO.MODALIDADE_JUROS,
+        CO.MULTA,
+        CO.TIPO_MULTA,
+        CO.DIAS_MULTA,
+        CO.NOSSONUMERO,
+        BB.LINHA_DIGITAVEL,
+        BB.CODIGO_BARRA
+      FROM COR_CADASTRO_DE_DUPLICATAS D
+      INNER JOIN API_PIX_CADASTRO_DE_CONTA B ON D.COR_CLI_BANCO = B.API_PIX_ID
+      INNER JOIN API_BOLETO_CAD_CONVENIO CO ON CO.IDCONTA = B.API_PIX_ID
+      LEFT JOIN COR_BOLETO_BANCARIO BB ON BB.ID_DUPLICATA = D.COR_DUP_ID
+      WHERE D.COR_DUP_ID = @id;
+    `);
+
+    console.log(dadosDup);
+
+    res.json({ resultado: dadosDup });
   } catch (error) {
     console.error("Erro geral ao gerar boletos:", error);
     res.status(500).json({ error: error.message });
