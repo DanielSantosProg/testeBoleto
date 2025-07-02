@@ -1,5 +1,6 @@
 const express = require("express");
 const gerarBoleto = require("./gerarBoletoService");
+const consultarBoleto = require("./consultarBoletoService");
 const fetchDbData = require("./BoletoDataSandbox");
 const puppeteer = require("puppeteer");
 const sql = require("mssql");
@@ -294,7 +295,7 @@ async function defParcelas(ids) {
   return result.recordset;
 }
 
-// Ordena as Duplicatas para serem ordenadas por número da parcela, ordenando duplicatas de mesmo documento seguidamente
+// Ordena as Duplicatas para serem ordenadas por número da parcela, ordenando duplicatas de mesmo documento sequencialmente
 function OrderIds(ids, orderedIds) {
   ids.sort((a, b) => {
     if (a.COR_DUP_DOCUMENTO !== b.COR_DUP_DOCUMENTO) {
@@ -378,14 +379,13 @@ app.post("/gerar_boletos", async (req, res) => {
   }
 });
 
-app.get("/consulta_boleto", async (req, res) => {
+app.post("/consulta_boleto", async (req, res) => {
   const { id } = req.body;
   if (!id) {
     return res.status(400).json({ error: "ID não foi fornecido." });
   }
 
   let pool;
-  const resultGet = {};
 
   try {
     pool = await sql.connect({
@@ -399,49 +399,89 @@ app.get("/consulta_boleto", async (req, res) => {
       },
     });
 
-    const dadosDup = await request().input("id", sql.Int, id).query(`
+    // Pega os dados do banco para gerar o payload
+    const request7 = new sql.Request();
+    const dadosDup = await request7.input("id", sql.Int, id).query(`
       SELECT
-        D.COR_DUP_ID AS duplicataId,
-        D.COR_CLI_BANCO AS codBanco,
-        D.COR_DUP_VALOR_DUPLICATA AS dupValor,
-        D.COR_DUP_TIPO AS dupTipo,
-        D.COR_DUP_DATA_EMISSAO AS dataEmissao,
-        D.COR_DUP_DATA_VENCIMENTO AS dataVencimento,
-        D.COR_DUP_DOCUMENTO AS numeroDocumento,
-        D.COR_DUP_NUMERO_ORDEM AS parcela,
-        D.COR_DUP_CLIENTE AS idCliente,
-        D.COR_DUP_IDEMPRESA AS idEmpresa,
-        D.COR_DUP_USU_CADASTROU AS usuCadastro,
-        B.CLIENTID AS clientId,
-        B.CLIENTSECRET AS clientSecret,
-        B.CAMINHO_CRT AS caminhoCrt,
-        B.SENHA_CRT AS senhaCrt,
-        B.API_PIX_ID AS idConta,
-        CO.CARTEIRA,
-        CO.PROTESTO,
-        CO.JUROS_DIA,
-        CO.MODALIDADE_JUROS,
-        CO.MULTA,
-        CO.TIPO_MULTA,
-        CO.DIAS_MULTA,
-        CO.NOSSONUMERO,
-        BB.LINHA_DIGITAVEL,
-        BB.CODIGO_BARRA
-      FROM COR_CADASTRO_DE_DUPLICATAS D
-      INNER JOIN API_PIX_CADASTRO_DE_CONTA B ON D.COR_CLI_BANCO = B.API_PIX_ID
-      INNER JOIN API_BOLETO_CAD_CONVENIO CO ON CO.IDCONTA = B.API_PIX_ID
-      LEFT JOIN COR_BOLETO_BANCARIO BB ON BB.ID_DUPLICATA = D.COR_DUP_ID
-      WHERE D.COR_DUP_ID = @id;
+      D.COR_DUP_ID AS duplicataId,
+      D.COR_CLI_BANCO AS codBanco,
+      D.COR_DUP_VALOR_DUPLICATA AS dupValor,
+      D.COR_DUP_TIPO AS dupTipo,
+      D.COR_DUP_DATA_EMISSAO AS dataEmissao,
+      D.COR_DUP_DATA_VENCIMENTO AS dataVencimento,
+      D.COR_DUP_DOCUMENTO AS numeroDocumento,
+      D.COR_DUP_NUMERO_ORDEM AS parcela,
+      D.COR_DUP_CLIENTE AS idCliente,
+      D.COR_DUP_IDEMPRESA AS idEmpresa,
+      D.COR_DUP_USU_CADASTROU AS usuCadastro,
+      B.CLIENTID AS clientId,
+      B.CLIENTSECRET AS clientSecret,
+      B.CAMINHO_CRT AS caminhoCrt,
+      B.SENHA_CRT AS senhaCrt,
+      B.API_PIX_ID AS idConta,
+      B.CONTA AS conta,
+      B.AGENCIA AS agencia,
+      CO.CARTEIRA AS carteira,
+      CO.PROTESTO,
+      CO.JUROS_DIA,
+      CO.MODALIDADE_JUROS,
+      CO.MULTA,
+      CO.TIPO_MULTA,
+      CO.DIAS_MULTA,
+      CO.NOSSONUMERO,
+      BB.LINHA_DIGITAVEL,
+      BB.CODIGO_BARRA,
+      BB.NOSSO_NUMERO AS nossoNumero,
+      E.GER_EMP_C_N_P_J_ AS cpfCnpjEmpresa
+    FROM COR_CADASTRO_DE_DUPLICATAS D
+    INNER JOIN API_PIX_CADASTRO_DE_CONTA B ON D.COR_CLI_BANCO = B.API_PIX_ID
+    INNER JOIN API_BOLETO_CAD_CONVENIO CO ON CO.IDCONTA = B.API_PIX_ID
+    INNER JOIN GER_EMPRESA E ON E.GER_EMP_ID = D.COR_DUP_IDEMPRESA
+    LEFT JOIN COR_BOLETO_BANCARIO BB ON BB.ID_DUPLICATA = D.COR_DUP_ID
+    WHERE D.COR_DUP_ID = @id;
     `);
 
-    console.log(dadosDup);
+    const data = dadosDup.recordset[0];
 
-    res.json({ resultado: dadosDup });
+    // Formata os campos para inserir no payload
+    const cpfCnpjString = parseInt(data.cpfCnpjEmpresa.substring(0, 9), 10);
+    let filialint = 0;
+    let controleInt = parseInt(data.cpfCnpjEmpresa.slice(-2));
+    let agencia = data.agencia ? String(data.agencia).substring(0, 4) : "0";
+    let conta = data.conta ? String(data.conta).substring(0, 7) : "0";
+    const isCpf = data.cpfCnpjEmpresa.length == 11 ? true : false;
+    if (!isCpf) {
+      filialint = parseInt(data.cpfCnpjEmpresa.substring(9, 12));
+    }
+
+    const negociacaoString = parseInt(String(agencia + conta));
+
+    const payload = {
+      cpfCnpj: {
+        cpfCnpj: cpfCnpjString,
+        filial: filialint,
+        controle: controleInt,
+      },
+      produto: parseInt(data.carteira),
+      negociacao: negociacaoString,
+      nossoNumero: parseInt(data.nossoNumero),
+      sequencia: 0,
+      status: 0,
+    };
+
+    const resultado = await consultarBoleto(
+      payload,
+      data.caminhoCrt,
+      data.senhaCrt,
+      data.caminhoCrt,
+      data.senhaCrt
+    );
+
+    res.json({ resultado });
   } catch (error) {
     console.error("Erro geral ao gerar boletos:", error);
     res.status(500).json({ error: error.message });
   } finally {
-    if (browser) await browser.close();
     if (pool) await pool.close();
   }
 });
