@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "gerar-boletos": "node gerarPdf.js",
-    "consultar-boleto": "node consultarBoleto.js"
+    "gerar-boletos": "node requests/gerarPdf.js",
+    "consultar-boleto": "node requests/consultarBoleto.js"
   },
   "keywords": [
     "boleto",

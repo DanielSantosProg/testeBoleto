@@ -1,6 +1,6 @@
 const { spawn } = require("child_process");
 const sql = require("mssql");
-const getToken = require("./gerarToken");
+const getToken = require("../gerarToken");
 const path = require("path");
 
 async function gerarBoleto(
@@ -15,7 +15,7 @@ async function gerarBoleto(
 
   return new Promise((resolve, reject) => {
     const python = spawn("python", [
-      path.join(__dirname, "python-boleto", "cli.py"),
+      path.join(__dirname, "..", "python-boleto", "cli.py"),
     ]);
     const dados = { payload, token, pfxPath: CAMINHO_CRT, senha: SENHA_CRT };
 

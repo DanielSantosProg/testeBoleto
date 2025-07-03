@@ -3,7 +3,7 @@ const https = require("https");
 const path = require("path");
 const axios = require("axios");
 const sql = require("mssql");
-const getToken = require("./gerarToken");
+const getToken = require("../gerarToken");
 
 async function consultarBoleto(
   payload,

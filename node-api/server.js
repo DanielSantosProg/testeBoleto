@@ -1,14 +1,20 @@
 const express = require("express");
-const gerarBoleto = require("./gerarBoletoService");
-const consultarBoleto = require("./consultarBoletoService");
+// Imports dos arquivos de services
+const gerarBoleto = require("./services/gerarBoletoService");
+const consultarBoleto = require("./services/consultarBoletoService");
+const alterarBoleto = require("./services/alterarBoletoService");
 const fetchDbData = require("./BoletoDataSandbox");
+
+// Importa dependências do Node
 const puppeteer = require("puppeteer");
 const sql = require("mssql");
 const fs = require("fs");
-const axios = require("axios");
 const path = require("path");
+
+// Requere o arquivo.env para a conexão com o banco de dados
 require("dotenv").config();
 
+// Inicia o app express
 const app = express();
 app.use(express.json({ limit: "100mb" }));
 app.use("/boletos", express.static(path.join(__dirname, "boletos")));
@@ -324,6 +330,7 @@ function OrderIds(ids, orderedIds) {
   });
 }
 
+// Função para gerar os arquivos PDF
 async function gerarBoletos(results) {
   try {
     const resultados = results;
@@ -367,6 +374,7 @@ async function gerarBoletos(results) {
   }
 }
 
+// Endpoint para geração de boletos
 app.post("/gerar_boletos", async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
@@ -385,6 +393,7 @@ app.post("/gerar_boletos", async (req, res) => {
       database: process.env.DB_DATABASE,
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 1433,
       options: {
         encrypt: false,
         trustServerCertificate: true,
@@ -436,6 +445,7 @@ app.post("/gerar_boletos", async (req, res) => {
   }
 });
 
+// Endpoint para consulta de boleto
 app.post("/consulta_boleto", async (req, res) => {
   const { id } = req.body;
   if (!id) {
@@ -450,6 +460,7 @@ app.post("/consulta_boleto", async (req, res) => {
       database: process.env.DB_DATABASE,
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 1433,
       options: {
         encrypt: false,
         trustServerCertificate: true,
@@ -527,6 +538,209 @@ app.post("/consulta_boleto", async (req, res) => {
     };
 
     const resultado = await consultarBoleto(
+      payload,
+      data.caminhoCrt,
+      data.senhaCrt,
+      data.clientId,
+      data.clientSecret
+    );
+
+    res.json({ resultado });
+  } catch (error) {
+    console.error("Erro geral ao gerar boletos:", error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    if (pool) await pool.close();
+  }
+});
+
+function formatDate(data) {
+  let date = new Date(data);
+  let dia = String(date.getUTCDate()).padStart(2, "0");
+  let mes = String(date.getUTCMonth() + 1).padStart(2, "0");
+  let ano = date.getUTCFullYear();
+  return `${dia}${mes}${ano}`;
+}
+
+// Endpoint para alteração de boleto
+app.post("/alterar_boleto", async (req, res) => {
+  const { id } = req.body;
+  if (!id) {
+    return res.status(400).json({ error: "ID não foi fornecido." });
+  }
+
+  let pool;
+
+  try {
+    pool = await sql.connect({
+      server: process.env.DB_SERVER,
+      database: process.env.DB_DATABASE,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 1433,
+      options: {
+        encrypt: false,
+        trustServerCertificate: true,
+      },
+    });
+
+    const dupTipoMap = {
+      CH: "1",
+      DM: "2",
+      DMI: "3",
+      DS: "4",
+      DSI: "5",
+      DR: "6",
+      LC: "7",
+      NCC: "8",
+      NCE: "9",
+      NCI: "10",
+      NCR: "11",
+      NP: "12",
+      NPR: "13",
+      TM: "14",
+      TS: "15",
+      NS: "16",
+      RC: "17",
+      FAT: "18",
+      ND: "19",
+      AP: "20",
+      ME: "21",
+      PC: "22",
+      DD: "23",
+      CCB: "24",
+      FI: "25",
+      RD: "26",
+      DRI: "27",
+      EC: "28",
+      ECI: "29",
+      CC: "31",
+      BDP: "32",
+      OUT: "99",
+    };
+
+    // Pega os dados do banco para gerar o payload
+    const request8 = new sql.Request();
+    const dadosDup = await request8.input("id", sql.Int, id).query(`
+      SELECT
+      D.COR_DUP_ID AS duplicataId,
+      D.COR_CLI_BANCO AS codBanco,
+      D.COR_DUP_VALOR_DUPLICATA AS dupValor,
+      D.COR_DUP_TIPO AS dupTipo,
+      D.COR_DUP_DATA_EMISSAO AS dataEmissao,
+      D.COR_DUP_DATA_VENCIMENTO AS dataVencimento,
+      D.COR_DUP_DOCUMENTO AS numeroDocumento,
+      D.COR_DUP_NUMERO_ORDEM AS parcela,
+      D.COR_DUP_CLIENTE AS idCliente,
+      D.COR_DUP_IDEMPRESA AS idEmpresa,
+      D.COR_DUP_USU_CADASTROU AS usuCadastro,
+      B.CLIENTID AS clientId,
+      B.CLIENTSECRET AS clientSecret,
+      B.CAMINHO_CRT AS caminhoCrt,
+      B.SENHA_CRT AS senhaCrt,
+      B.API_PIX_ID AS idConta,
+      B.CONTA AS conta,
+      B.AGENCIA AS agencia,
+      CO.CARTEIRA AS carteira,
+      CO.PROTESTO,
+      CO.JUROS_DIA,
+      CO.MODALIDADE_JUROS,
+      CO.MULTA,
+      CO.TIPO_MULTA,
+      CO.DIAS_MULTA,
+      CO.NOSSONUMERO,
+      BB.LINHA_DIGITAVEL,
+      BB.CODIGO_BARRA,
+      BB.NOSSO_NUMERO AS nossoNumero,
+      E.GER_EMP_C_N_P_J_ AS cpfCnpjEmpresa
+    FROM COR_CADASTRO_DE_DUPLICATAS D
+    INNER JOIN API_PIX_CADASTRO_DE_CONTA B ON D.COR_CLI_BANCO = B.API_PIX_ID
+    INNER JOIN API_BOLETO_CAD_CONVENIO CO ON CO.IDCONTA = B.API_PIX_ID
+    INNER JOIN GER_EMPRESA E ON E.GER_EMP_ID = D.COR_DUP_IDEMPRESA
+    LEFT JOIN COR_BOLETO_BANCARIO BB ON BB.ID_DUPLICATA = D.COR_DUP_ID
+    WHERE D.COR_DUP_ID = @id;
+    `);
+
+    const data = dadosDup.recordset[0];
+
+    // Formata os campos para inserir no payload
+    const cpfCnpjString = parseInt(data.cpfCnpjEmpresa.substring(0, 9));
+    let filialint = 0;
+    let controleInt = parseInt(data.cpfCnpjEmpresa.slice(-2));
+    let agencia = data.agencia ? String(data.agencia).substring(0, 4) : "0000";
+    let conta = data.conta ? String(data.conta).substring(0, 7) : "0000000";
+    const isCpf = data.cpfCnpjEmpresa.length == 11 ? true : false;
+    if (!isCpf) {
+      filialint = parseInt(data.cpfCnpjEmpresa.substring(9, 12));
+    }
+
+    const negociacaoString = parseInt(String(agencia + conta));
+
+    const valorvar = parseInt(dupValor * 100);
+
+    const payload = {
+      codUsuario: "OPENAPI",
+      vnmnalTitloCobr: valorvar,
+      chave: {
+        cnpjCpf: cpfCnpjString,
+        filial: filialint,
+        controle: controleInt,
+        idprod: parseInt(data.carteira),
+        ctaprod: negociacaoString,
+        nossoNumero: String(data.nossoNumero),
+      },
+      dadosTitulo: {
+        seuNumero: String(data.numeroDocumento),
+        dataEmissao: data.dataEmissao
+          ? parseInt(formatDate(data.dataEmissao))
+          : 0,
+        especie: String(dupTipoMap[data.dupTipo]) || "99",
+        dataVencimento: data.dataVencimento
+          ? parseInt(formatDate(data.dataVencimento))
+          : 0,
+        codVencimento: 0,
+        codInstrucaoProtesto: 0,
+        diasProtesto: 0,
+        codDecurso: 0,
+        diasDecurso: 0,
+        codAbatimento: 1,
+        valorAbatimentoTitulo: 190,
+        dataPrimeiroDesc: 0,
+        valorPrimeiroDesc: 0,
+        codPrimeiroDesc: 0,
+        acaoPrimeiroDesc: 0,
+        dataSegundoDesc: 0,
+        valorSegundoDesc: 0,
+        codSegundoDesc: 0,
+        acaoSegundoDesc: 0,
+        dataTerceiroDesc: 0,
+        valorTerceiroDesc: 0,
+        codTerceiroDesc: 0,
+        acaoTerceiroDesc: 0,
+        controleParticipante: "146738343034214732",
+        idAvisoSacado: "S",
+        diasAposVencidoJuros: 0,
+        valorJuros: 0,
+        codJuros: 0,
+        diasAposVencimentoMulta: 0,
+        valorMulta: 0,
+        codMulta: 0,
+        codNegativacao: 0,
+        diasNegativacao: 0,
+        codPagamentoParcial: "N",
+        qtdePagamentosParciais: 0,
+        sacado: "",
+        cgcCpfSacado: "0",
+        endereco: "",
+        cep: 0,
+        cepSuf: 0,
+        sacadorAvalista: "",
+        aceite: "0",
+        cgcCpfAvalista: "0",
+      },
+    };
+
+    const resultado = await alterarBoleto(
       payload,
       data.caminhoCrt,
       data.senhaCrt,
