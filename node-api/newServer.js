@@ -473,8 +473,8 @@ app.post("/consulta_boleto", async (req, res) => {
       payload,
       data.caminhoCrt,
       data.senhaCrt,
-      data.caminhoCrt,
-      data.senhaCrt
+      data.clientId,
+      data.clientSecret
     );
 
     res.json({ resultado });
