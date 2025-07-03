@@ -15,42 +15,18 @@ async function gerarBoletos(idsParaGerar) {
     );
 
     const resultados = response.data.resultados;
-    console.log(`Recebidos ${resultados.length} resultados.`);
+    const arquivos = response.data.arquivos;
+    const urls = response.data.links;
 
-    const outputDir = path.join(__dirname, "boletos");
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir);
-    }
+    console.log(`Recebidos ${resultados.length} resultados.`);
+    console.log("Arquivos recebidos: ", arquivos);
+    console.log("Links para os arquivos: ", urls);
 
     for (const resultado of resultados) {
       if (resultado.error) {
         console.error(`Erro no boleto ID ${resultado.id}: ${resultado.error}`);
         continue;
       }
-
-      if (!resultado.pdfBase64) {
-        console.error(`PDF não disponível para o boleto ID ${resultado.id}`);
-        continue;
-      }
-
-      let buffer;
-
-      if (typeof resultado.pdfBase64 === "string") {
-        buffer = Buffer.from(resultado.pdfBase64, "base64");
-      } else if (Array.isArray(resultado.pdfBase64)) {
-        buffer = Buffer.from(resultado.pdfBase64);
-      } else {
-        console.error(
-          `Formato inesperado para pdfBase64 no boleto ID ${resultado.id}`
-        );
-        continue;
-      }
-
-      const filename = `boleto_${resultado.id}_${Date.now()}.pdf`;
-      const filepath = path.join(outputDir, filename);
-
-      fs.writeFileSync(filepath, buffer);
-      console.log(`Boleto ID ${resultado.id} salvo como '${filename}'`);
     }
   } catch (error) {
     if (error.response) {
