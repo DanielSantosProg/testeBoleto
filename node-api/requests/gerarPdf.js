@@ -8,6 +8,7 @@ async function gerarBoletos(idsParaGerar) {
   try {
     console.log("Enviando requisição POST para:", API_URL);
 
+    console.log("\nIniciando a geração de boletos...\n");
     const response = await axios.post(
       API_URL,
       { ids: idsParaGerar },
@@ -18,9 +19,23 @@ async function gerarBoletos(idsParaGerar) {
     const arquivos = response.data.arquivos;
     const urls = response.data.links;
 
-    console.log(`Recebidos ${resultados.length} resultados.`);
-    console.log("Arquivos recebidos: ", arquivos);
-    console.log("Links para os arquivos: ", urls);
+    if (resultados.length == 0) {
+      console.log(
+        "Verifique se as duplicatas informadas existem ou se já gerou boleto."
+      );
+      return;
+    }
+
+    resultados.forEach((resultado) => {
+      if (idsParaGerar.some((id) => id === resultado.id)) {
+        console.log(`Boleto de ID ${resultado.id} já foi gerado.`);
+      }
+    });
+
+    // Logaas os dados recebidos
+    console.log(`\nForam recebidos ${resultados.length} arquivos:`);
+    console.log(arquivos);
+    console.log("\nLinks para os arquivos: ", urls);
 
     for (const resultado of resultados) {
       if (resultado.error) {

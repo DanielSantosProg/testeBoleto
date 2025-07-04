@@ -334,7 +334,7 @@ function OrderIds(ids, orderedIds) {
 async function gerarBoletos(results) {
   try {
     const resultados = results;
-    console.log(`Recebidos ${resultados.length} resultados.`);
+    console.log(`Recebidos ${resultados.length} resultados.\n`);
 
     const outputDir = path.join(__dirname, "boletos");
     if (!fs.existsSync(outputDir)) {
@@ -407,6 +407,12 @@ app.post("/gerar_boletos", async (req, res) => {
 
     // Pega os dados de parcelas e número do documento de cada duplicata
     const dadosNumDoc = await defParcelas(ids);
+
+    ids.forEach((id) => {
+      if (!dadosNumDoc.some((dado) => dado.COR_DUP_ID == id)) {
+        console.log(`Duplicata de ID ${id} não encontrada.`);
+      }
+    });
 
     // Cria um array para colocar os ids de forma ordenada
     let orderedIds = [];
