@@ -296,8 +296,9 @@ async function defParcelas(ids) {
   });
 
   const query = `
-    SELECT COR_DUP_ID, COR_DUP_DOCUMENTO, COR_DUP_NUMERO_ORDEM, COR_DUP_PROTOCOLO 
-    FROM COR_CADASTRO_DE_DUPLICATAS 
+    SELECT COR_DUP_ID, COR_DUP_DOCUMENTO, COR_DUP_NUMERO_ORDEM, BB.ID_DUPLICATA AS dupId 
+    FROM COR_CADASTRO_DE_DUPLICATAS D
+    LEFT JOIN COR_BOLETO_BANCARIO BB ON BB.ID_DUPLICATA = D.COR_DUP_ID
     WHERE COR_DUP_ID IN (${params.join(",")})
   `;
 
@@ -324,7 +325,7 @@ function OrderIds(ids, orderedIds) {
   });
   ids.forEach((item) => {
     // Checa se já foi gerado boleto para a duplicata
-    if (!item.COR_DUP_PROTOCOLO) {
+    if (!item.dupId) {
       orderedIds.push(item.COR_DUP_ID);
     }
   });
@@ -496,15 +497,8 @@ app.post("/consulta_boleto", async (req, res) => {
       B.CONTA AS conta,
       B.AGENCIA AS agencia,
       CO.CARTEIRA AS carteira,
-      CO.PROTESTO,
-      CO.JUROS_DIA,
-      CO.MODALIDADE_JUROS,
-      CO.MULTA,
-      CO.TIPO_MULTA,
-      CO.DIAS_MULTA,
-      CO.NOSSONUMERO,
-      BB.LINHA_DIGITAVEL,
-      BB.CODIGO_BARRA,
+      BB.STATUS_BOL AS status,
+      BB.ID_BOLETO AS idBoleto,
       BB.NOSSO_NUMERO AS nossoNumero,
       E.GER_EMP_C_N_P_J_ AS cpfCnpjEmpresa
     FROM COR_CADASTRO_DE_DUPLICATAS D
@@ -551,7 +545,27 @@ app.post("/consulta_boleto", async (req, res) => {
       data.clientSecret
     );
 
-    res.json({ resultado });
+    let dataMov = new Date();
+
+    // Faz update no registro do boleto no banco após a consulta
+    if (resultado.titulo.codStatus != data.status) {
+      const request9 = new sql.Request();
+      await request9
+        .input("dataMovimento", sql.DateTime, dataMov)
+        .input("codStatus", sql.Int, resultado.titulo.codStatus)
+        .input("id", sql.Int, data.idBoleto).query(`
+        UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus WHERE ID_BOLETO = @id
+      `);
+
+      console.log("Boleto atualizado com novo status.");
+    }
+
+    res.json({
+      duplicata: id,
+      dataMovimento: dataMov,
+      status: resultado.titulo.codStatus,
+      resultado: resultado,
+    });
   } catch (error) {
     console.error("Erro geral ao gerar boletos:", error);
     res.status(500).json({ error: error.message });

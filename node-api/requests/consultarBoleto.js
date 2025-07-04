@@ -12,15 +12,22 @@ async function consulta(id) {
       { responseType: "json" }
     );
 
-    const resConsulta = response.data.resultado;
-
     if (response.error) {
       throw new Error(`Erro no boleto de ID ${id}: ${response.error}`);
     }
 
-    console.log(`Boleto de ID ${id} encontrado.`);
+    const status = response.data.status;
+    const dataMovimentacao = response.data.dataMovimento;
+    const duplicata = response.data.duplicata;
+    const dados = response.data.resultado;
+
+    console.log(`Boleto da duplicata de ID ${id} encontrado.`);
     console.log("Dados: ");
-    console.log(resConsulta);
+    console.log(dados);
+
+    console.log("\nStatus: ", status);
+    console.log("Data de Movimentação: ", dataMovimentacao);
+    console.log("Duplicata: ", duplicata);
   } catch (error) {
     if (error.response) {
       console.error("Erro na API:", error.response.status);
