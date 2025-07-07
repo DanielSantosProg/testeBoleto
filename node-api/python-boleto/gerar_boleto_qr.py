@@ -181,10 +181,17 @@ def calcular_digito_verificador(carteira, nosso_numero):
     
     return str(digito)
 
-def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> dict:
+def format_cpf_cnpj(cpf_cnpj):
+    if (len(cpf_cnpj) == 11):
+        result_string = cpf_cnpj[:3] + "." + cpf_cnpj[3:6] + "." + cpf_cnpj[6:9] + "-" + cpf_cnpj[9:]
+        return result_string
+    result_string = cpf_cnpj[:2] + "." + cpf_cnpj[2:5] + "." + cpf_cnpj[5:8] + "/" + cpf_cnpj[8:12] + "-" + cpf_cnpj[12:]
+    return  result_string
+
+def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str, dig_conta: str, dig_agencia: str) -> dict:
     try:
         # Envia a requisição para registro do boleto
-        dados = registrar_boleto(token, dados_payload, pfx_path, senha) 
+        dados = registrar_boleto(token, dados_payload, pfx_path, senha)
 
         # Cancela a criação do boleto se não retornar os dados dele.
         if not dados:
@@ -211,7 +218,6 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
         # Campos do JSON para inserir no html
         campos = {
             "nome-beneficiario": dados.get("cedente10", ""),
-            "cnpj-beneficiario": dados.get("cnpjCpfCedente10", ""),
             "nome-pagador": dados.get("nomeSacado10", ""),
             "cpf-pagador": dados.get("cnpjSacado10", ""),
             "endereco-pagador": dados.get("endSacado10", ""),
@@ -228,8 +234,9 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
 
         # Formatando a data para "DD/MM/AAAA"
         dt_emissao_str = f'{dados.get("dataEmis10", "")}'.replace('.','/')
-        campos["data-emissao"] = dt_emissao_str
+        campos["data-emissao"] = dt_emissao_str        
 
+        # Criando a string do nosso número completa
         nosso_num_string = str(dados.get("ctitloCobrCdent", ""))
         nosso_num_format = nosso_num_string.zfill(11)
         carteira = str(dados.get("cidtfdProdCobr", ""))
@@ -239,6 +246,14 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
 
         nosso_num_format =  carteira + "/" + nosso_num_format + "-" + digito
         campos["nosso-numero"] = nosso_num_format
+
+        # Formatando a variável tomando em conta se é cpf ou cnpj 
+        cpf_cnpj_get = dados.get("cnpjCpfCedente10", "")
+        if cpf_cnpj_get == "":
+            campos["cnpj-beneficiario"]= "0"
+        else:
+            cpf_cnpj_formatado = format_cpf_cnpj(cpf_cnpj_get)
+            campos["cnpj-beneficiario"]= cpf_cnpj_formatado
 
         # Definindo o valor correto
         valor_do_boleto_string = dados.get("valMoeda10", "0")
@@ -259,6 +274,8 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
         uf_sacado = dados.get("ufSacado10", "")
         cep_sacado = dados.get("cepSacado10", "0")
         cepc_sacado = dados.get("cepcSacado10", "")
+        cpf_cnpj_sacado = dados.get("cnpjSacado10", "")
+        format_cpf_cnpj_sacado = format_cpf_cnpj(cpf_cnpj_sacado)
 
         try:
             endereco_pagador = (
@@ -266,7 +283,8 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
                 f'{end_sacado}<br />'
                 f'{bai_sacado}<br />'
                 f'{cid_sacado} - {uf_sacado} - '
-                f'CEP: {int(cep_sacado):05d}-{cepc_sacado}'
+                f'CEP: {int(cep_sacado):05d}-{cepc_sacado} <br />'
+                f'CPF/CNPJ: {format_cpf_cnpj_sacado}'
             )
         except ValueError: # Caso o CEP não seja numérico
              endereco_pagador = (
@@ -274,7 +292,8 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
                 f'{end_sacado}<br />'
                 f'{bai_sacado}<br />'
                 f'{cid_sacado} - {uf_sacado} - '
-                f'CEP: {cep_sacado}-{cepc_sacado}'
+                f'CEP: {cep_sacado}-{cepc_sacado} <br />'
+                f'CPF/CNPJ: {format_cpf_cnpj_sacado}'
             )
         campos["endereco-pagador"] = endereco_pagador
 
@@ -285,7 +304,7 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
         try:
             valor_agencia = str(valor_agencia_int)
             valor_conta = str(valor_conta_int)
-            str_agencia_conta = f'{valor_agencia}/{valor_conta}'           
+            str_agencia_conta = f'{valor_agencia}-{dig_agencia}/{valor_conta}-{dig_conta}'           
         except ValueError:
             valor_agencia = '0'
             valor_conta = '0'

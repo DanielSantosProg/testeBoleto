@@ -12,12 +12,14 @@ def main():
         token = parsed.get("token")
         pfx_path = parsed.get("pfxPath")
         senha = parsed.get("senha")
+        dig_conta = parsed.get("dig_conta")
+        dig_agencia = parsed.get("dig_agencia")
 
         if not token or not pfx_path or not senha:
             print(json.dumps({"error": "Token, certificado ou senha não fornecidos."}))
             sys.exit(1)
 
-        resultado = gerar_boleto(payload, token, pfx_path, senha)
+        resultado = gerar_boleto(payload, token, pfx_path, senha, dig_conta, dig_agencia)
 
         if "error" in resultado:
             print(json.dumps({"error": resultado["error"]}))

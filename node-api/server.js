@@ -48,16 +48,8 @@ async function processarBoleto(id, pool, browser) {
         B.CAMINHO_CRT AS caminhoCrt,
         B.SENHA_CRT AS senhaCrt,
         B.API_PIX_ID AS idConta,
-        CO.CARTEIRA,
-        CO.PROTESTO,
-        CO.JUROS_DIA,
-        CO.MODALIDADE_JUROS,
-        CO.MULTA,
-        CO.TIPO_MULTA,
-        CO.DIAS_MULTA,
-        CO.NOSSONUMERO,
-        BB.LINHA_DIGITAVEL,
-        BB.CODIGO_BARRA
+        B.DVCONTA AS digConta,
+        B.DVAGENCIA AS digAgencia        
       FROM COR_CADASTRO_DE_DUPLICATAS D
       INNER JOIN API_PIX_CADASTRO_DE_CONTA B ON D.COR_CLI_BANCO = B.API_PIX_ID
       INNER JOIN API_BOLETO_CAD_CONVENIO CO ON CO.IDCONTA = B.API_PIX_ID
@@ -116,7 +108,9 @@ async function processarBoleto(id, pool, browser) {
       data.caminhoCrt,
       data.senhaCrt,
       data.clientId,
-      data.clientSecret
+      data.clientSecret,
+      data.digConta,
+      data.digAgencia
     );
 
     // Verifica se a função Python retornou erro

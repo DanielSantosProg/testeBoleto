@@ -8,7 +8,9 @@ async function gerarBoleto(
   CAMINHO_CRT,
   SENHA_CRT,
   CLIENTID,
-  CLIENTSECRET
+  CLIENTSECRET,
+  DIG_CONTA,
+  DIG_AGENCIA
 ) {
   const token = await getToken(CAMINHO_CRT, SENHA_CRT, CLIENTID, CLIENTSECRET);
   if (!token) throw new Error("Erro ao obter token");
@@ -17,7 +19,14 @@ async function gerarBoleto(
     const python = spawn("python", [
       path.join(__dirname, "..", "python-boleto", "cli.py"),
     ]);
-    const dados = { payload, token, pfxPath: CAMINHO_CRT, senha: SENHA_CRT };
+    const dados = {
+      payload,
+      token,
+      pfxPath: CAMINHO_CRT,
+      senha: SENHA_CRT,
+      dig_conta: DIG_CONTA,
+      dig_agencia: DIG_AGENCIA,
+    };
 
     let stdout = "",
       stderr = "";
