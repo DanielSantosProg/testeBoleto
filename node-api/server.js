@@ -506,7 +506,7 @@ app.post("/consulta_boleto", async (req, res) => {
     INNER JOIN API_BOLETO_CAD_CONVENIO CO ON CO.IDCONTA = B.API_PIX_ID
     INNER JOIN GER_EMPRESA E ON E.GER_EMP_ID = D.COR_DUP_IDEMPRESA
     LEFT JOIN COR_BOLETO_BANCARIO BB ON BB.ID_DUPLICATA = D.COR_DUP_ID
-    WHERE D.COR_DUP_ID = @id;
+    WHERE BB.ID_BOLETO = @id;
     `);
 
     const data = dadosDup.recordset[0];
@@ -546,9 +546,11 @@ app.post("/consulta_boleto", async (req, res) => {
     );
 
     let dataMov = new Date();
+    let movimento = false;
 
     // Faz update no registro do boleto no banco após a consulta
     if (resultado.titulo.codStatus != data.status) {
+      movimento = true;
       const request9 = new sql.Request();
       await request9
         .input("dataMovimento", sql.DateTime, dataMov)
@@ -560,12 +562,21 @@ app.post("/consulta_boleto", async (req, res) => {
       console.log("Boleto atualizado com novo status.");
     }
 
-    res.json({
-      duplicata: id,
-      dataMovimento: dataMov,
-      status: resultado.titulo.codStatus,
-      resultado: resultado,
-    });
+    if (movimento) {
+      res.json({
+        duplicata: data.duplicataId,
+        dataMovimento: dataMov,
+        status: resultado.titulo.codStatus,
+        resultado: resultado,
+      });
+    } else {
+      res.json({
+        duplicata: data.duplicataId,
+        dataMovimento: null,
+        status: resultado.titulo.codStatus,
+        resultado: resultado,
+      });
+    }
   } catch (error) {
     console.error("Erro geral ao gerar boletos:", error);
     res.status(500).json({ error: error.message });
