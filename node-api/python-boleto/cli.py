@@ -27,7 +27,8 @@ def main():
             "status": resultado["status"],
             "cod_barras": resultado["cod_barras"],
             "boleto_html": resultado["boleto_html"],
-            "dados_bradesco_api": resultado["dados_bradesco_api"]
+            "dados_bradesco_api": resultado["dados_bradesco_api"],
+            "nosso_numero_full": resultado["nosso_numero_full"]
         }))
         sys.exit(0)
     except Exception as e:

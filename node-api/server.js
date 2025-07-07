@@ -124,7 +124,13 @@ async function processarBoleto(id, pool, browser) {
       throw new Error(`Erro na geração do boleto: ${resultado.error}`);
     }
 
-    const { status, cod_barras, boleto_html, dados_bradesco_api } = resultado;
+    const {
+      status,
+      cod_barras,
+      boleto_html,
+      dados_bradesco_api,
+      nosso_numero_full,
+    } = resultado;
 
     if (!dados_bradesco_api || Object.keys(dados_bradesco_api).length === 0) {
       throw new Error("Dados do bradesco incorretos.");
@@ -152,7 +158,7 @@ async function processarBoleto(id, pool, browser) {
       const request3 = new sql.Request(transaction);
       await request3
         .input("id", sql.Int, data.duplicataId)
-        .input("nossoNumero", sql.VarChar(50), nossoNumeroValue)
+        .input("nossoNumero", sql.VarChar(50), nosso_numero_full)
         .input("codBarras", sql.VarChar(50), codBarrasValue).query(`
           UPDATE COR_CADASTRO_DE_DUPLICATAS
           SET COR_DUP_PROTOCOLO = @nossoNumero,
@@ -428,8 +434,12 @@ app.post("/gerar_boletos", async (req, res) => {
     for (const id of orderedIds) {
       // Aguarda o processamento do boleto atual antes de continuar
       const resultado = await processarBoletoComRetry(id, pool, browser);
-      console.log(`Boleto de id ${id} processado.`);
-      results.push(resultado);
+      if (resultado) {
+        console.log(`Boleto de id ${id} processado.`);
+        results.push(resultado);
+      } else {
+        console.log(`Boleto de id ${id} apresentou erros e não foi gerado.`);
+      }
     }
 
     const arquivosPdf = await gerarBoletos(results);

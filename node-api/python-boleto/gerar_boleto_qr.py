@@ -155,6 +155,31 @@ def gerar_qrcode_pix_svg_base64(pix_payload: str) -> str:
     
     return 'data:image/svg+xml;charset=utf-8;base64,' + b64
 
+def calcular_digito_verificador(carteira, nosso_numero):
+    # Concatenar carteira + nosso número
+    num = carteira + nosso_numero
+    
+    # Pesos de 2 a 7, da direita para a esquerda
+    pesos = [2, 3, 4, 5, 6, 7]
+    
+    soma = 0
+    peso_index = 0
+    
+    # Percorrer os dígitos da direita para a esquerda
+    for digito in reversed(num):
+        soma += int(digito) * pesos[peso_index]
+        peso_index = (peso_index + 1) % len(pesos)
+    
+    resto = soma % 11
+    digito = 11 - resto
+
+    if resto == 0:
+        return "0"
+    
+    if resto == 1:
+        return "P"
+    
+    return str(digito)
 
 def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> dict:
     try:
@@ -195,7 +220,6 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
             "linha-digitavel-1": dados.get("linhaDig10", ""),
             "linha-digitavel-2": dados.get("linhaDig10", ""),
             "moeda": dados.get("especMoeda10", ""),
-            "nosso-numero": dados.get("ctitloCobrCdent", ""),
             "vencimento": f'{dados.get("dataVencto10", "")}'.replace('.','/'),
             "especie-doc": dados.get("especDocto10", ""),
             "aceite": dados.get("aceite10", ""),
@@ -205,6 +229,16 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
         # Formatando a data para "DD/MM/AAAA"
         dt_emissao_str = f'{dados.get("dataEmis10", "")}'.replace('.','/')
         campos["data-emissao"] = dt_emissao_str
+
+        nosso_num_string = str(dados.get("ctitloCobrCdent", ""))
+        nosso_num_format = nosso_num_string.zfill(11)
+        carteira = str(dados.get("cidtfdProdCobr", ""))
+        carteira = carteira.zfill(2)
+
+        digito = calcular_digito_verificador(carteira, nosso_num_string)
+
+        nosso_num_format =  carteira + "/" + nosso_num_format + "-" + digito
+        campos["nosso-numero"] = nosso_num_format
 
         # Definindo o valor correto
         valor_do_boleto_string = dados.get("valMoeda10", "0")
@@ -284,6 +318,7 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str) -> 
             "cod_barras": cod_barras_decoded, # número do código de barras para inserção no banco
             "boleto_html": html,
             "dados_bradesco_api": dados, # retorna os dados da API
+            "nosso_numero_full": nosso_num_format,
         }
     except Exception as e:
         return {"error": f"Erro interno na geração do boleto: dados = {dados}, erro={e}"}
