@@ -238,13 +238,13 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str, dig
 
         # Criando a string do nosso número completa
         nosso_num_string = str(dados.get("ctitloCobrCdent", ""))
-        nosso_num_format = nosso_num_string.zfill(11)
+        nosso_num_fill = nosso_num_string.zfill(11)
         carteira = str(dados.get("cidtfdProdCobr", ""))
         carteira = carteira.zfill(2)
 
-        digito = calcular_digito_verificador(carteira, nosso_num_string)
+        digito = calcular_digito_verificador(carteira, nosso_num_fill)
 
-        nosso_num_format =  carteira + "/" + nosso_num_format + "-" + digito
+        nosso_num_format =  carteira + "/" + nosso_num_fill + "-" + digito
         campos["nosso-numero"] = nosso_num_format
 
         # Formatando a variável tomando em conta se é cpf ou cnpj 
