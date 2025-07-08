@@ -2,7 +2,8 @@ const express = require("express");
 // Imports dos arquivos de services
 const gerarBoleto = require("./services/gerarBoletoService");
 const consultarBoleto = require("./services/consultarBoletoService");
-const consultarBoletosPendentes = require("./services/consultarBoletosPendentes");
+const consultarBoletosPendentes = require("./services/consultarBoletosPendentesService");
+const consultarBoletosLiquidados = require("./services/consultarBoletosLiquidadosService");
 const alterarBoleto = require("./services/alterarBoletoService");
 const fetchDbData = require("./BoletoDataSandbox");
 
@@ -703,6 +704,7 @@ app.post("/consultar_pendentes", async (req, res) => {
       paginaAnterior: 0,
     };
 
+    let resultadoCompleto;
     let resultado = await consultarBoletosPendentes(
       payload,
       data.caminhoCrt,
@@ -714,6 +716,7 @@ app.post("/consultar_pendentes", async (req, res) => {
     if (!resultado) {
       throw new Error("Não foi possível fazer a consulta no Bradesco.");
     }
+    resultadoCompleto = resultado.titulos;
     let pagina;
     let titulosLeft = true;
 
@@ -755,6 +758,12 @@ app.post("/consultar_pendentes", async (req, res) => {
           data.clientId,
           data.clientSecret
         );
+
+        if (!resultado) {
+          throw new Error("Não foi possível fazer a consulta no Bradesco.");
+        }
+
+        resultadoCompleto += resultado.titulos;
       }
     }
 
@@ -792,7 +801,161 @@ app.post("/consultar_pendentes", async (req, res) => {
       });
     } */
     res.json({
-      resultados: resultado.titulos,
+      resultados: resultadoCompleto,
+    });
+  } catch (error) {
+    console.error("Erro geral ao consultar os boletos:", error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    if (pool) await pool.close();
+  }
+});
+
+app.post("/consultar_liquidados", async (req, res) => {
+  const {
+    cpfCnpj,
+    dataVencInicial,
+    dataVencFinal,
+    dataRegInicial,
+    dataRegFinal,
+    tipoRegistro,
+    valorInicial,
+    valorFinal,
+  } = req.body;
+
+  let pool;
+
+  try {
+    pool = await sql.connect({
+      server: process.env.DB_SERVER,
+      database: process.env.DB_DATABASE,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 1433,
+      options: {
+        encrypt: false,
+        trustServerCertificate: true,
+      },
+    });
+
+    // Pega os dados do banco para gerar o payload
+    const request7 = new sql.Request();
+    const dadosDup = await request7.input("id", sql.Int, id).query(`
+      SELECT TOP 1
+      B.CONTA AS conta,
+      B.AGENCIA AS agencia,
+      B.CLIENTID AS clientId,
+      B.CLIENTSECRET AS clientSecret,
+      B.CAMINHO_CRT AS caminhoCrt,
+      B.SENHA_CRT AS senhaCrt,
+      CO.CARTEIRA AS carteira,
+      E.GER_EMP_C_N_P_J_ AS cpfCnpjEmpresa
+    FROM COR_CADASTRO_DE_DUPLICATAS D
+    INNER JOIN API_PIX_CADASTRO_DE_CONTA B ON D.COR_CLI_BANCO = B.API_PIX_ID
+    INNER JOIN API_BOLETO_CAD_CONVENIO CO ON CO.IDCONTA = B.API_PIX_ID
+    INNER JOIN GER_EMPRESA E ON E.GER_EMP_ID = D.COR_DUP_IDEMPRESA
+    WHERE B.CODBANCO = 237;
+    `);
+
+    const data = dadosDup.recordset[0];
+
+    if (!data) {
+      throw new Error("Dados não encontrados.");
+    }
+
+    // Formata os campos para inserir no payload
+    const cpfCnpjString = parseInt(data.cpfCnpjEmpresa.substring(0, 9));
+    let filialint = 0;
+    let controleInt = parseInt(data.cpfCnpjEmpresa.slice(-2));
+    let agencia = data.agencia ? String(data.agencia).substring(0, 4) : "0000";
+    let conta = data.conta ? String(data.conta).substring(0, 7) : "0000000";
+    const isCpf = data.cpfCnpjEmpresa.length == 11 ? true : false;
+    if (!isCpf) {
+      filialint = parseInt(data.cpfCnpjEmpresa.substring(9, 12));
+    }
+
+    const negociacaoString = parseInt(String(agencia + conta));
+
+    let payload = {
+      cpfCnpj: {
+        cpfCnpj: cpfCnpjString,
+        filial: filialint,
+        controle: controleInt,
+      },
+      produto: parseInt(data.carteira),
+      negociacao: negociacaoString,
+      dataMovimentoDe: dataVencInicial || 0,
+      dataMovimentoAte: dataVencFinal || 0,
+      dataPagamentoDe: dataRegInicial || 0,
+      dataPagamentoAte: dataRegFinal || 0,
+      origemPagamento: tipoRegistro || 0,
+      valorTituloDe: valorInicial || 0,
+      valorTituloAte: valorFinal || 0,
+      paginaAnterior: 0,
+    };
+
+    let resultadoCompleto;
+    let resultado = await consultarBoletosLiquidados(
+      payload,
+      data.caminhoCrt,
+      data.senhaCrt,
+      data.clientId,
+      data.clientSecret
+    );
+
+    if (!resultado) {
+      throw new Error("Não foi possível fazer a consulta no Bradesco.");
+    }
+
+    resultadoCompleto = resultado.titulos;
+    let pagina;
+    let titulosLeft = true;
+
+    while (titulosLeft) {
+      resultado.titulos.forEach((titulo) => {
+        console.log("\nTítulo: ");
+        console.log(titulo);
+      });
+      pagina = resultado.pagina;
+      titulosLeft = resultado.indMaisPagina == "S" ? true : false;
+
+      if (titulosLeft) {
+        payload = {
+          cpfCnpj: {
+            cpfCnpj: cpfCnpjString,
+            filial: filialint,
+            controle: controleInt,
+          },
+          produto: parseInt(data.carteira),
+          negociacao: negociacaoString,
+          dataMovimentoDe: dataVencInicial || 0,
+          dataMovimentoAte: dataVencFinal || 0,
+          dataPagamentoDe: dataRegInicial || 0,
+          dataPagamentoAte: dataRegFinal || 0,
+          origemPagamento: 0,
+          valorTituloDe: valorInicial || 0,
+          valorTituloAte: valorFinal || 0,
+          paginaAnterior: pagina,
+        };
+
+        resultado = await consultarBoletosPendentes(
+          payload,
+          data.caminhoCrt,
+          data.senhaCrt,
+          data.clientId,
+          data.clientSecret
+        );
+        if (!resultado) {
+          throw new Error("Não foi possível fazer a consulta no Bradesco.");
+        }
+        resultadoCompleto += resultado.titulos;
+        console.log("Resultado completo da consulta: ");
+        console.log(resultadoCompleto);
+      }
+    }
+
+    res.json({
+      resultados: resultadoCompleto,
     });
   } catch (error) {
     console.error("Erro geral ao consultar os boletos:", error);

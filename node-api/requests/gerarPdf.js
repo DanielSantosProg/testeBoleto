@@ -26,13 +26,7 @@ async function gerarBoletos(idsParaGerar) {
       return;
     }
 
-    resultados.forEach((resultado) => {
-      if (idsParaGerar.some((id) => id === resultado.id)) {
-        console.log(`Boleto de ID ${resultado.id} já foi gerado.`);
-      }
-    });
-
-    // Logaas os dados recebidos
+    // Loga as os dados recebidos
     console.log(`\nForam recebidos ${resultados.length} arquivos:`);
     console.log(arquivos);
     console.log("\nLinks para os arquivos: ", urls);
