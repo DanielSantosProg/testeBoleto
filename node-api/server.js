@@ -2,6 +2,7 @@ const express = require("express");
 // Imports dos arquivos de services
 const gerarBoleto = require("./services/gerarBoletoService");
 const consultarBoleto = require("./services/consultarBoletoService");
+const consultarBoletosPendentes = require("./services/consultarBoletosPendentes");
 const alterarBoleto = require("./services/alterarBoletoService");
 const fetchDbData = require("./BoletoDataSandbox");
 
@@ -515,6 +516,10 @@ app.post("/consulta_boleto", async (req, res) => {
 
     const data = dadosDup.recordset[0];
 
+    if (!data) {
+      throw new Error("Não existe o boleto informado.");
+    }
+
     // Formata os campos para inserir no payload
     const cpfCnpjString = parseInt(data.cpfCnpjEmpresa.substring(0, 9));
     let filialint = 0;
@@ -549,6 +554,10 @@ app.post("/consulta_boleto", async (req, res) => {
       data.clientSecret
     );
 
+    if (!resultado) {
+      throw new Error("Não foi possível fazer a consulta no Bradesco.");
+    }
+
     let dataMov = new Date();
     let movimento = false;
 
@@ -582,7 +591,7 @@ app.post("/consulta_boleto", async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Erro geral ao gerar boletos:", error);
+    console.error("Erro geral ao consultar o boleto: ", error);
     res.status(500).json({ error: error.message });
   } finally {
     if (pool) await pool.close();
@@ -596,6 +605,202 @@ function formatDate(data) {
   let ano = date.getUTCFullYear();
   return `${dia}${mes}${ano}`;
 }
+
+app.post("/consultar_pendentes", async (req, res) => {
+  const {
+    nossoNumero,
+    cpfCnpj,
+    dataVencInicial,
+    dataVencFinal,
+    dataRegInicial,
+    dataRegFinal,
+    valor,
+    faixaVencimento,
+  } = req.body;
+
+  let pool;
+
+  try {
+    pool = await sql.connect({
+      server: process.env.DB_SERVER,
+      database: process.env.DB_DATABASE,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 1433,
+      options: {
+        encrypt: false,
+        trustServerCertificate: true,
+      },
+    });
+
+    // Pega os dados do banco para gerar o payload
+    const request7 = new sql.Request();
+    const dadosDup = await request7.input("id", sql.Int, id).query(`
+      SELECT TOP 1
+      B.CONTA AS conta,
+      B.AGENCIA AS agencia,
+      B.CLIENTID AS clientId,
+      B.CLIENTSECRET AS clientSecret,
+      B.CAMINHO_CRT AS caminhoCrt,
+      B.SENHA_CRT AS senhaCrt,
+      CO.CARTEIRA AS carteira,
+      E.GER_EMP_C_N_P_J_ AS cpfCnpjEmpresa
+    FROM COR_CADASTRO_DE_DUPLICATAS D
+    INNER JOIN API_PIX_CADASTRO_DE_CONTA B ON D.COR_CLI_BANCO = B.API_PIX_ID
+    INNER JOIN API_BOLETO_CAD_CONVENIO CO ON CO.IDCONTA = B.API_PIX_ID
+    INNER JOIN GER_EMPRESA E ON E.GER_EMP_ID = D.COR_DUP_IDEMPRESA
+    WHERE B.CODBANCO = 237;
+    `);
+
+    const data = dadosDup.recordset[0];
+
+    if (!data) {
+      throw new Error("Dados não encontrados.");
+    }
+
+    // Formata os campos para inserir no payload
+    const cpfCnpjString = parseInt(data.cpfCnpjEmpresa.substring(0, 9));
+    let filialint = 0;
+    let controleInt = parseInt(data.cpfCnpjEmpresa.slice(-2));
+    let agencia = data.agencia ? String(data.agencia).substring(0, 4) : "0000";
+    let conta = data.conta ? String(data.conta).substring(0, 7) : "0000000";
+    const isCpf = data.cpfCnpjEmpresa.length == 11 ? true : false;
+    if (!isCpf) {
+      filialint = parseInt(data.cpfCnpjEmpresa.substring(9, 12));
+    }
+
+    // Formata campos de Cpf/Cnpj do pagador
+    const cpfCnpjStringPagador = parseInt(cpfCnpj.substring(0, 9));
+    let filialintPagador = 0;
+    let controleIntPagador = parseInt(cpfCnpj.slice(-2));
+    const isCpfPagador = cpfCnpj.length == 11 ? true : false;
+    if (!isCpfPagador) {
+      filialintPagador = parseInt(cpfCnpj.substring(9, 12));
+    }
+
+    const negociacaoString = parseInt(String(agencia + conta));
+
+    let payload = {
+      cpfCnpj: {
+        cpfCnpj: cpfCnpjString,
+        filial: filialint,
+        controle: controleInt,
+      },
+      produto: parseInt(data.carteira),
+      negociacao: negociacaoString,
+      nossoNumero: parseInt(nossoNumero) || 0,
+      cpfCnpjPagador: {
+        cpfCnpj: cpfCnpjStringPagador || 0,
+        filial: filialintPagador || 0,
+        controle: controleIntPagador || 0,
+      },
+      dataVencimentoDe: dataVencInicial || 0,
+      dataVencimentoAte: dataVencFinal || 0,
+      dataRegistroDe: dataRegInicial || 0,
+      dataRegistroAte: dataRegFinal || 0,
+      valorTituloDe: valor || 0,
+      faixaVencto: faixaVencimento || 7,
+      paginaAnterior: 0,
+    };
+
+    let resultado = await consultarBoletosPendentes(
+      payload,
+      data.caminhoCrt,
+      data.senhaCrt,
+      data.clientId,
+      data.clientSecret
+    );
+
+    if (!resultado) {
+      throw new Error("Não foi possível fazer a consulta no Bradesco.");
+    }
+    let pagina;
+    let titulosLeft = true;
+
+    while (titulosLeft) {
+      resultado.titulos.forEach((titulo) => {
+        console.log("\nTítulo: ");
+        console.log(titulo);
+      });
+      pagina = resultado.pagina;
+      titulosLeft = resultado.indMaisPagina == "S" ? true : false;
+
+      if (titulosLeft) {
+        payload = {
+          cpfCnpj: {
+            cpfCnpj: cpfCnpjString,
+            filial: filialint,
+            controle: controleInt,
+          },
+          produto: parseInt(data.carteira),
+          negociacao: negociacaoString,
+          nossoNumero: parseInt(nossoNumero) || 0,
+          cpfCnpjPagador: {
+            cpfCnpj: cpfCnpjStringPagador || 0,
+            filial: filialintPagador || 0,
+            controle: controleIntPagador || 0,
+          },
+          dataVencimentoDe: dataVencInicial || 0,
+          dataVencimentoAte: dataVencFinal || 0,
+          dataRegistroDe: dataRegInicial || 0,
+          dataRegistroAte: dataRegFinal || 0,
+          valorTituloDe: valor || 0,
+          faixaVencto: faixaVencimento || 7,
+          paginaAnterior: pagina,
+        };
+        resultado = await consultarBoletosPendentes(
+          payload,
+          data.caminhoCrt,
+          data.senhaCrt,
+          data.clientId,
+          data.clientSecret
+        );
+      }
+    }
+
+    /*
+    let dataMov = new Date();
+    let movimento = false;
+
+    // Faz update no registro do boleto no banco após a consulta
+    if (resultado.titulo.codStatus != data.status) {
+      movimento = true;
+      const request9 = new sql.Request();
+      await request9
+        .input("dataMovimento", sql.DateTime, dataMov)
+        .input("codStatus", sql.Int, resultado.titulo.codStatus)
+        .input("id", sql.Int, data.idBoleto).query(`
+        UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus WHERE ID_BOLETO = @id
+      `);
+
+      console.log("Boleto atualizado com novo status.");
+    }
+
+    if (movimento) {
+      res.json({
+        duplicata: data.duplicataId,
+        dataMovimento: dataMov,
+        status: resultado.titulo.codStatus,
+        resultado: resultado,
+      });
+    } else {
+      res.json({
+        duplicata: data.duplicataId,
+        dataMovimento: null,
+        status: resultado.titulo.codStatus,
+        resultado: resultado,
+      });
+    } */
+    res.json({
+      resultados: resultado.titulos,
+    });
+  } catch (error) {
+    console.error("Erro geral ao consultar os boletos:", error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    if (pool) await pool.close();
+  }
+});
 
 // Endpoint para alteração de boleto
 app.post("/alterar_boleto", async (req, res) => {

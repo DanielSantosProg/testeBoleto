@@ -302,13 +302,13 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str, dig
         valor_conta_int = dados.get("ctaCred10", "")
 
         try:
-            valor_agencia = str(valor_agencia_int)
-            valor_conta = str(valor_conta_int)
+            valor_agencia = str(valor_agencia_int).zfill(4)
+            valor_conta = str(valor_conta_int).zfill(7)
             str_agencia_conta = f'{valor_agencia}-{dig_agencia}/{valor_conta}-{dig_conta}'           
         except ValueError:
-            valor_agencia = '0'
-            valor_conta = '0'
-            str_agencia_conta = '0/0'
+            valor_agencia = '0000'
+            valor_conta = '0000000'
+            str_agencia_conta = f'{valor_agencia}-0/{valor_conta}-0'
 
         campos['agencia-conta-beneficiario'] = str_agencia_conta
 
