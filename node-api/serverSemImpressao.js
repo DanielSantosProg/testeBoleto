@@ -1,6 +1,9 @@
 const express = require("express");
 // Imports dos arquivos de services
-const { gerarBoleto } = require("./services/gerarBoletoService");
+const {
+  gerarBoleto,
+  requisicaoBradesco,
+} = require("./services/gerarBoletoService");
 const consultarBoleto = require("./services/consultarBoletoService");
 const consultarBoletosPendentes = require("./services/consultarBoletosPendentesService");
 const consultarBoletosLiquidados = require("./services/consultarBoletosLiquidadosService");
@@ -21,8 +24,8 @@ const app = express();
 app.use(express.json({ limit: "100mb" }));
 app.use("/boletos", express.static(path.join(__dirname, "boletos")));
 
-// Função para processar um boleto individualmente, recebendo o browser Puppeteer aberto
-async function processarBoleto(id, pool, browser) {
+// Função para processar um boleto individualmente
+async function processarBoleto(id, pool) {
   let transaction;
   let page;
   let resultado;
@@ -105,30 +108,22 @@ async function processarBoleto(id, pool, browser) {
     const payload = await fetchDbData(id, pool);
 
     // Gera os dados do boleto e o html
-    resultado = await gerarBoleto(
+    resultado = await requisicaoBradesco(
       payload,
       data.caminhoCrt,
       data.senhaCrt,
       data.clientId,
-      data.clientSecret,
-      data.digConta,
-      data.digAgencia
+      data.clientSecret
     );
 
-    // Verifica se a função Python retornou erro
     if (resultado.error) {
-      throw new Error(`Erro na geração do boleto: ${resultado.error}`);
+      await transaction.rollback();
+      return { id, error: resultado.error };
     }
 
-    const {
-      status,
-      cod_barras,
-      boleto_html,
-      dados_bradesco_api,
-      nosso_numero_full,
-    } = resultado;
+    const { dados_bradesco_api, nossoNumeroFull, cod_barras } = resultado;
 
-    if (!dados_bradesco_api || Object.keys(dados_bradesco_api).length === 0) {
+    if (!dados_bradesco_api) {
       throw new Error("Dados do bradesco incorretos.");
     }
 
@@ -154,7 +149,7 @@ async function processarBoleto(id, pool, browser) {
       const request3 = new sql.Request(transaction);
       await request3
         .input("id", sql.Int, data.duplicataId)
-        .input("nossoNumero", sql.VarChar(50), nosso_numero_full)
+        .input("nossoNumero", sql.VarChar(50), nossoNumeroFull)
         .input("codBarras", sql.VarChar(50), codBarrasValue).query(`
           UPDATE COR_CADASTRO_DE_DUPLICATAS
           SET COR_DUP_PROTOCOLO = @nossoNumero,
@@ -193,16 +188,9 @@ async function processarBoleto(id, pool, browser) {
       await transaction.commit();
     }
 
-    // Gera o PDF com Puppeteer usando browser já aberto
-    page = await browser.newPage();
-    await page.setContent(boleto_html, { waitUntil: "networkidle0" });
-    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
-    await page.close();
-
     return {
       id,
-      status,
-      pdfBase64: Buffer.from(pdfBuffer).toString("base64"),
+      error: null,
     };
   } catch (error) {
     if (transaction) {
@@ -215,54 +203,39 @@ async function processarBoleto(id, pool, browser) {
     return {
       id,
       error: error.message,
-      pdfBase64: null,
     };
-  } finally {
-    if (page) {
-      try {
-        if (!page.isClosed()) {
-          await page.close();
-        }
-      } catch (error) {
-        if (
-          error.message.includes("No target with given id") ||
-          error.message.includes("Target closed")
-        ) {
-          console.log(`Página já fechada para o boleto ID ${id}`);
-        } else {
-          console.error(`Erro ao fechar página do boleto ID ${id}:`, error);
-        }
-      }
-    }
   }
 }
 
-async function processarBoletoComRetry(id, pool, browser, maxTentativas = 3) {
+async function processarBoletoComRetry(id, pool, maxTentativas = 3) {
   let tentativa = 0;
   let resultado;
 
   while (tentativa < maxTentativas) {
     tentativa++;
     try {
-      resultado = await processarBoleto(id, pool, browser);
-      if (!resultado.error) {
-        return resultado;
+      resultado = await processarBoleto(id, pool);
+
+      // Se a função retornar um objeto com erro, lance para entrar no catch
+      if (resultado.error) {
+        throw new Error(resultado.error);
       }
-      throw new Error(resultado.error);
+
+      // Sucesso: retorna o resultado
+      return resultado;
     } catch (error) {
       const msgErro = error.message || "";
 
       // Verifica se o erro contém a mensagem específica para retry
       const deveTentarNovamente =
         msgErro.includes("Erro na requisição para a API do Bradesco: 504") ||
-        msgErro.includes("Gateway Time-out");
+        msgErro.toLowerCase().includes("gateway time-out");
 
       if (!deveTentarNovamente) {
-        // Se o erro não for o esperado para retry, retorna imediatamente
+        // Erro não é para retry, retorna imediatamente
         return {
           id,
           error: msgErro,
-          pdfBase64: null,
         };
       }
 
@@ -275,11 +248,10 @@ async function processarBoletoComRetry(id, pool, browser, maxTentativas = 3) {
         return {
           id,
           error: msgErro,
-          pdfBase64: null,
         };
       }
 
-      // espera crescente antes da próxima tentativa
+      // Espera crescente antes da próxima tentativa
       await new Promise((res) => setTimeout(res, 500 * tentativa));
     }
   }
@@ -387,7 +359,6 @@ app.post("/gerar_boletos", async (req, res) => {
   }
 
   let pool;
-  let browser;
   const results = [];
 
   try {
@@ -401,11 +372,6 @@ app.post("/gerar_boletos", async (req, res) => {
         encrypt: false,
         trustServerCertificate: true,
       },
-    });
-
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
     // Pega os dados de parcelas e número do documento de cada duplicata
@@ -429,32 +395,24 @@ app.post("/gerar_boletos", async (req, res) => {
     // Processa sequencialmente para garantir a ordem
     for (const id of orderedIds) {
       // Aguarda o processamento do boleto atual antes de continuar
-      const resultado = await processarBoletoComRetry(id, pool, browser);
+      const resultado = await processarBoletoComRetry(id, pool);
       if (resultado && !resultado.error) {
         console.log(`Boleto de id ${id} processado.`);
         results.push(resultado);
       } else if (resultado.error) {
         console.log(`Boleto de id ${id} apresentou erros e não foi gerado.`);
         console.log("Erro: ", resultado.error);
+        results.push(resultado);
       }
     }
 
-    const arquivosPdf = await gerarBoletos(results);
-
-    const urls = arquivosPdf.map(
-      (filename) => `${req.protocol}://${req.get("host")}/boletos/${filename}`
-    );
-
     res.json({
       resultados: results,
-      arquivos: arquivosPdf,
-      links: urls,
     });
   } catch (error) {
     console.error("Erro geral ao gerar boletos:", error);
     res.status(500).json({ error: error.message });
   } finally {
-    if (browser) await browser.close();
     if (pool) await pool.close();
   }
 });

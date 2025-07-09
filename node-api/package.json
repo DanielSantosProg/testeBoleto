@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "start2": "node indexSemImpressao.js",
     "gerar-boletos": "node requests/gerarPdf.js",
+    "gerar-boletos-dados": "node requests/gerarBoletos.js",
     "consultar-boleto": "node requests/consultarBoleto.js"
   },
   "keywords": [
