@@ -132,9 +132,6 @@ async function processarBoleto(id, pool, browser) {
       throw new Error("Dados do bradesco incorretos.");
     }
 
-    console.log("Carteira: ", dados_bradesco_api.cidtfdProdCobr);
-    console.log("Nosso Numero: ", dados_bradesco_api.ctitloCobrCdent);
-
     if (resultado) {
       // Define strings para o SQL
       const nossoNumeroValue =
@@ -433,7 +430,7 @@ app.post("/gerar_boletos", async (req, res) => {
     for (const id of orderedIds) {
       // Aguarda o processamento do boleto atual antes de continuar
       const resultado = await processarBoletoComRetry(id, pool, browser);
-      if (resultado) {
+      if (resultado && !resultado.error) {
         console.log(`Boleto de id ${id} processado.`);
         results.push(resultado);
       } else {
