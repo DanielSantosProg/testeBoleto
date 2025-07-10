@@ -25,16 +25,9 @@ async function gerarBoletos(idsParaGerar) {
     }
 
     // Loga as os dados recebidos
-    console.log(`\nForam recebidos ${resultados.length} arquivos:`);
+    console.log(`\nForam recebidas ${resultados.length} respostas:`);
 
     console.log(resultados);
-
-    for (const resultado of resultados) {
-      if (resultado.error) {
-        console.error(`Erro no boleto ID ${resultado.id}: ${resultado.error}`);
-        continue;
-      }
-    }
   } catch (error) {
     if (error.response) {
       console.error("Erro na API:", error.response.status);

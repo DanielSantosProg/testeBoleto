@@ -22,7 +22,7 @@ async function consulta(id) {
     const dados = response.data.resultado;
 
     console.log(`Boleto da duplicata de ID ${id} encontrado.`);
-    console.log("Dados: ");
+    console.log("\nDados: ");
     console.log(dados);
 
     console.log("\nStatus: ", status);

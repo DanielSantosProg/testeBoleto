@@ -18,9 +18,6 @@ async function gerarBoleto(
   const token = await getToken(CAMINHO_CRT, SENHA_CRT, CLIENTID, CLIENTSECRET);
   if (!token) throw new Error("Erro ao obter token");
 
-  console.log(payload);
-  console.log(token);
-
   return new Promise((resolve, reject) => {
     const python = spawn("python", [
       path.join(__dirname, "..", "python-boleto", "cli.py"),
@@ -268,7 +265,7 @@ async function requisicaoBradesco(
   };
 
   try {
-    console.log("Enviando requisição POST para:", API_URL);
+    console.log("Enviando requisição POST para a API do Bradesco: ", API_URL);
 
     const response = await axios.post(API_URL, payload, {
       httpsAgent: agent,
@@ -280,7 +277,10 @@ async function requisicaoBradesco(
 
     if (!resultado || Object.keys(resultado).length === 0) {
       console.log("Verifique os dados do boleto.");
-      return;
+      return {
+        error:
+          "Resposta vazia da API do Bradesco. Verifique os dados do boleto.",
+      };
     }
 
     if (resultado.error) {

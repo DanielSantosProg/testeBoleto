@@ -191,6 +191,7 @@ async function processarBoleto(id, pool) {
     return {
       id,
       error: null,
+      status: dados_bradesco_api.codStatus10,
     };
   } catch (error) {
     if (transaction) {
@@ -203,6 +204,7 @@ async function processarBoleto(id, pool) {
     return {
       id,
       error: error.message,
+      status: "NAO GERADO",
     };
   }
 }
@@ -236,6 +238,7 @@ async function processarBoletoComRetry(id, pool, maxTentativas = 3) {
         return {
           id,
           error: msgErro,
+          status: "NAO GERADO",
         };
       }
 
@@ -248,6 +251,7 @@ async function processarBoletoComRetry(id, pool, maxTentativas = 3) {
         return {
           id,
           error: msgErro,
+          status: "NAO GERADO",
         };
       }
 
@@ -281,7 +285,7 @@ async function defParcelas(ids) {
 }
 
 // Ordena as Duplicatas para serem ordenadas por número da parcela, ordenando duplicatas de mesmo documento sequencialmente
-function OrderIds(ids, orderedIds) {
+function OrderIds(ids, orderedIds, results) {
   ids.sort((a, b) => {
     if (a.COR_DUP_DOCUMENTO !== b.COR_DUP_DOCUMENTO) {
       return a.COR_DUP_DOCUMENTO - b.COR_DUP_DOCUMENTO;
@@ -297,55 +301,24 @@ function OrderIds(ids, orderedIds) {
 
     return ordemA - ordemB;
   });
+
+  let stringDuplicatasGeradas = "";
   ids.forEach((item) => {
-    // Checa se já foi gerado boleto para a duplicata
     if (!item.dupId) {
       orderedIds.push(item.COR_DUP_ID);
+    } else {
+      stringDuplicatasGeradas += ` ${item.dupId},`;
+      results.push({
+        id: item.COR_DUP_ID,
+        error: "Duplicata já gerou boleto",
+        status: "NAO GERADO",
+      });
     }
   });
-}
 
-// Função para gerar os arquivos PDF
-async function gerarBoletos(results) {
-  try {
-    const resultados = results;
-    console.log(`Recebidos ${resultados.length} resultados.\n`);
-
-    const outputDir = path.join(__dirname, "boletos");
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir);
-    }
-
-    const arquivosGerados = [];
-
-    for (const resultado of results) {
-      if (resultado.error) continue;
-      if (!resultado.pdfBase64) continue;
-
-      let buffer;
-      if (typeof resultado.pdfBase64 === "string") {
-        buffer = Buffer.from(resultado.pdfBase64, "base64");
-      } else if (Array.isArray(resultado.pdfBase64)) {
-        buffer = Buffer.from(resultado.pdfBase64);
-      } else {
-        continue;
-      }
-
-      const filename = `boleto_${resultado.id}_${Date.now()}.pdf`;
-      const filepath = path.join(outputDir, filename);
-
-      fs.writeFileSync(filepath, buffer);
-      arquivosGerados.push(filename);
-    }
-
-    return arquivosGerados;
-  } catch (error) {
-    if (error.response) {
-      console.error("Erro na API:", error.response.status);
-      console.error(error.response.data);
-    } else {
-      console.error("Erro inesperado:", error.message);
-    }
+  if (stringDuplicatasGeradas != "") {
+    stringDuplicatasGeradas = stringDuplicatasGeradas.slice(0, -1);
+    console.log(`Duplicatas${stringDuplicatasGeradas} já foram geradas.`);
   }
 }
 
@@ -386,11 +359,7 @@ app.post("/gerar_boletos", async (req, res) => {
     // Cria um array para colocar os ids de forma ordenada
     let orderedIds = [];
 
-    OrderIds(dadosNumDoc, orderedIds);
-
-    if (orderedIds.length == 0) {
-      console.log("As duplicatas informadas já tiveram seus boletos gerados.");
-    }
+    OrderIds(dadosNumDoc, orderedIds, results);
 
     // Processa sequencialmente para garantir a ordem
     for (const id of orderedIds) {
@@ -552,7 +521,10 @@ app.post("/consulta_boleto", async (req, res) => {
     }
   } catch (error) {
     console.error("Erro geral ao consultar o boleto: ", error);
-    res.status(500).json({ error: error.message });
+    res.json({
+      duplicata: id,
+      error: error.message,
+    });
   } finally {
     if (pool) await pool.close();
   }
