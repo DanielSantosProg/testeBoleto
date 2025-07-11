@@ -188,10 +188,10 @@ def format_cpf_cnpj(cpf_cnpj):
     result_string = cpf_cnpj[:2] + "." + cpf_cnpj[2:5] + "." + cpf_cnpj[5:8] + "/" + cpf_cnpj[8:12] + "-" + cpf_cnpj[12:]
     return  result_string
 
-def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str, dig_conta: str, dig_agencia: str) -> dict:
+def gerar_boleto(dados_bradesco:dict, dados_payload: dict, token: str, pfx_path: str, senha: str, dig_conta: str, dig_agencia: str) -> dict:
     try:
         # Envia a requisição para registro do boleto
-        dados = registrar_boleto(token, dados_payload, pfx_path, senha)
+        dados = dados_bradesco
 
         # Cancela a criação do boleto se não retornar os dados dele.
         if not dados:
@@ -336,7 +336,7 @@ def gerar_boleto(dados_payload: dict, token: str, pfx_path: str, senha: str, dig
             "status": status_final,
             "cod_barras": cod_barras_decoded, # número do código de barras para inserção no banco
             "boleto_html": html,
-            "dados_bradesco_api": dados, # retorna os dados da API
+            "dados_bradesco_api": dados_bradesco, # retorna os dados da API
             "nosso_numero_full": nosso_num_format,
         }
     except Exception as e:

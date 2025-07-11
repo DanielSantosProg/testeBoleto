@@ -6,6 +6,66 @@ const fs = require("fs");
 const getToken = require("../gerarToken");
 const path = require("path");
 
+const API_URL =
+  "https://openapisandbox.prebanco.com.br/boleto-hibrido/cobranca-registro/v1/gerarBoleto";
+
+async function sendRequest(token, payload, CAMINHO_CRT, SENHA_CRT) {
+  const agent = new https.Agent({
+    pfx: fs.readFileSync(CAMINHO_CRT),
+    passphrase: SENHA_CRT,
+  });
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
+  try {
+    console.log("Enviando requisição POST para:", API_URL);
+
+    const response = await axios.post(API_URL, payload, {
+      httpsAgent: agent,
+      headers: headers,
+      responseType: "json",
+    });
+
+    const resultado = response.data;
+
+    if (!resultado || Object.keys(resultado).length === 0) {
+      console.log("Verifique os dados do boleto.");
+      return;
+    }
+
+    if (resultado.error) {
+      console.error(`Erro no boleto ID ${resultado.id}: ${resultado.error}`);
+      return resultado;
+    }
+
+    const nossoNumeroFull = gerarNossoNumeroFull(resultado);
+
+    const decoded = decodeCodBar(resultado.codBarras10, ebcdicToNum);
+
+    return resultado;
+  } catch (error) {
+    if (error.response) {
+      const status = error.response.status;
+      const data = error.response.data;
+
+      console.error("Erro na API:", status);
+      console.error(data);
+
+      // Retorna uma mensagem detalhada para o retry identificar
+      return {
+        error: `Erro na requisição para a API do Bradesco: ${status} - ${
+          typeof data === "string" ? data : JSON.stringify(data)
+        }`,
+      };
+    } else {
+      console.error("Erro inesperado:", error.message);
+      return { error: error.message || "Erro desconhecido" };
+    }
+  }
+}
 async function gerarBoleto(
   payload,
   CAMINHO_CRT,
@@ -18,11 +78,19 @@ async function gerarBoleto(
   const token = await getToken(CAMINHO_CRT, SENHA_CRT, CLIENTID, CLIENTSECRET);
   if (!token) throw new Error("Erro ao obter token");
 
+  const dados_bradesco = await sendRequest(
+    token,
+    payload,
+    CAMINHO_CRT,
+    SENHA_CRT
+  );
+
   return new Promise((resolve, reject) => {
     const python = spawn("python", [
       path.join(__dirname, "..", "python-boleto", "cli.py"),
     ]);
     const dados = {
+      dados_bradesco: dados_bradesco,
       payload,
       token,
       pfxPath: CAMINHO_CRT,
@@ -241,9 +309,6 @@ const ebcdicToNum = {
   nWnWn: "99",
 };
 
-const API_URL =
-  "https://openapisandbox.prebanco.com.br/boleto-hibrido/cobranca-registro/v1/gerarBoleto";
-
 async function requisicaoBradesco(
   payload,
   CAMINHO_CRT,
@@ -265,7 +330,7 @@ async function requisicaoBradesco(
   };
 
   try {
-    console.log("Enviando requisição POST para a API do Bradesco: ", API_URL);
+    console.log("Enviando requisição POST para:", API_URL);
 
     const response = await axios.post(API_URL, payload, {
       httpsAgent: agent,
@@ -277,10 +342,7 @@ async function requisicaoBradesco(
 
     if (!resultado || Object.keys(resultado).length === 0) {
       console.log("Verifique os dados do boleto.");
-      return {
-        error:
-          "Resposta vazia da API do Bradesco. Verifique os dados do boleto.",
-      };
+      return;
     }
 
     if (resultado.error) {
