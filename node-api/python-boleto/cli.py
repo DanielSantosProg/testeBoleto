@@ -8,7 +8,6 @@ def main():
     input_data = sys.stdin.read()
     try:
         parsed = json.loads(input_data)
-        dados_bradesco = parsed.get("dados_bradesco")
         payload = parsed.get("payload")
         token = parsed.get("token")
         pfx_path = parsed.get("pfxPath")
@@ -20,7 +19,7 @@ def main():
             print(json.dumps({"error": "Token, certificado ou senha não fornecidos."}))
             sys.exit(1)
 
-        resultado = gerar_boleto(dados_bradesco, payload, token, pfx_path, senha, dig_conta, dig_agencia)
+        resultado = gerar_boleto(payload, token, pfx_path, senha, dig_conta, dig_agencia)
 
         if "error" in resultado:
             print(json.dumps({"error": resultado["error"]}))

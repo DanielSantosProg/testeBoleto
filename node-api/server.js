@@ -1,7 +1,9 @@
 const express = require("express");
 // Imports dos arquivos de services
 const { gerarBoleto } = require("./services/gerarBoletoService");
-const consultarBoleto = require("./services/consultarBoletoService");
+const {
+  consultarBoletoComRetry,
+} = require("./services/consultarBoletoService");
 const consultarBoletosPendentes = require("./services/consultarBoletosPendentesService");
 const consultarBoletosLiquidados = require("./services/consultarBoletosLiquidadosService");
 const alterarBoleto = require("./services/alterarBoletoService");
@@ -563,7 +565,8 @@ app.post("/consulta_boleto", async (req, res) => {
       status: 0,
     };
 
-    const resultado = await consultarBoleto(
+    const resultado = await consultarBoletoComRetry(
+      id,
       payload,
       data.caminhoCrt,
       data.senhaCrt,

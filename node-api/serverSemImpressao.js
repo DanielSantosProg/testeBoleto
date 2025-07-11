@@ -1,10 +1,9 @@
 const express = require("express");
 // Imports dos arquivos de services
+const { requisicaoBradesco } = require("./services/gerarBoletoService");
 const {
-  gerarBoleto,
-  requisicaoBradesco,
-} = require("./services/gerarBoletoService");
-const consultarBoleto = require("./services/consultarBoletoService");
+  consultarBoletoComRetry,
+} = require("./services/consultarBoletoService");
 const consultarBoletosPendentes = require("./services/consultarBoletosPendentesService");
 const consultarBoletosLiquidados = require("./services/consultarBoletosLiquidadosService");
 const alterarBoleto = require("./services/alterarBoletoService");
@@ -21,13 +20,12 @@ require("dotenv").config();
 
 // Inicia o app express
 const app = express();
-app.use(express.json({ limit: "100mb" }));
+app.use(express.json({ limit: "10mb" }));
 app.use("/boletos", express.static(path.join(__dirname, "boletos")));
 
 // Função para processar um boleto individualmente
 async function processarBoleto(id, pool) {
   let transaction;
-  let page;
   let resultado;
   try {
     transaction = new sql.Transaction(pool);
@@ -475,7 +473,8 @@ app.post("/consulta_boleto", async (req, res) => {
       status: 0,
     };
 
-    const resultado = await consultarBoleto(
+    const resultado = await consultarBoletoComRetry(
+      id,
       payload,
       data.caminhoCrt,
       data.senhaCrt,
@@ -491,7 +490,7 @@ app.post("/consulta_boleto", async (req, res) => {
     let movimento = false;
 
     // Faz update no registro do boleto no banco após a consulta
-    if (resultado.titulo.codStatus != data.status) {
+    if (resultado?.titulo.codStatus != data.status) {
       movimento = true;
       const request9 = new sql.Request();
       await request9
