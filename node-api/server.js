@@ -115,24 +115,32 @@ async function processarBoleto(id, pool, browser) {
       data.digAgencia
     );
 
+    let registrado = false;
+
     // Verifica se a função Python retornou erro
     if (resultado.error) {
-      throw new Error(`Erro na geração do boleto: ${resultado.error}`);
+      if (resultado.dados_bradesco_api) {
+        console.log(
+          "Boleto apresentou erro e não foi gerado o pdf, mas foi registrado."
+        );
+        console.log(resultado.dados_bradesco_api);
+        registrado = true;
+      } else {
+        throw new Error(`Erro na geração do boleto: ${resultado.error}`);
+      }
     }
 
-    const {
-      status,
-      cod_barras,
-      boleto_html,
-      dados_bradesco_api,
-      nosso_numero_full,
-    } = resultado;
+    const { status, boleto_html } = resultado;
+
+    const dados_bradesco_api = resultado.dados_bradesco_api || null;
+    const cod_barras = resultado.cod_barras || "0";
+    const nosso_numero_full = resultado.nosso_numero_full || "";
 
     if (!dados_bradesco_api || Object.keys(dados_bradesco_api).length === 0) {
       throw new Error("Dados do bradesco incorretos.");
     }
 
-    if (resultado) {
+    if (resultado || registrado === true) {
       // Define strings para o SQL
       const nossoNumeroValue =
         dados_bradesco_api.ctitloCobrCdent !== undefined &&
@@ -193,6 +201,10 @@ async function processarBoleto(id, pool, browser) {
       await transaction.commit();
     }
 
+    if (status == "Erro") {
+      throw new Error(`Boleto gerado no Bradesco, mas sem PDF gerado`);
+    }
+
     // Gera o PDF com Puppeteer usando browser já aberto
     page = await browser.newPage();
     await page.setContent(boleto_html, { waitUntil: "networkidle0" });
@@ -207,9 +219,12 @@ async function processarBoleto(id, pool, browser) {
   } catch (error) {
     if (transaction) {
       try {
-        await transaction.rollback();
+        // Só faz rollback se a transação ainda não foi comitada
+        if (!transaction._aborted && !transaction._completed) {
+          await transaction.rollback();
+        }
       } catch (rollbackError) {
-        console.error(`Erro ao dar rollback para ID ${id}:`, rollbackError);
+        console.error("Não foi feito Rollback.");
       }
     }
     return {

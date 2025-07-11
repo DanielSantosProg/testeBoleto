@@ -41,10 +41,6 @@ async function sendRequest(token, payload, CAMINHO_CRT, SENHA_CRT) {
       return resultado;
     }
 
-    const nossoNumeroFull = gerarNossoNumeroFull(resultado);
-
-    const decoded = decodeCodBar(resultado.codBarras10, ebcdicToNum);
-
     return resultado;
   } catch (error) {
     if (error.response) {
@@ -122,6 +118,21 @@ async function gerarBoleto(
         const parsed = JSON.parse(stdout);
 
         if (parsed.error) {
+          if (dados_bradesco) {
+            const nossoNumeroFull = gerarNossoNumeroFull(dados_bradesco);
+
+            const decoded = decodeCodBar(
+              dados_bradesco.codBarras10,
+              ebcdicToNum
+            );
+            return resolve({
+              error: parsed.error,
+              status: "Erro",
+              cod_barras: decoded,
+              nosso_numero_full: nossoNumeroFull,
+              dados_bradesco_api: dados_bradesco,
+            });
+          }
           // Se o JSON tem a chave error, rejeita com essa mensagem
           return reject(new Error(parsed.error));
         }
