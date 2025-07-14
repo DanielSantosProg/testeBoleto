@@ -4,6 +4,7 @@ const { requisicaoBradesco } = require("./services/gerarBoletoService");
 const {
   consultarBoletoComRetry,
 } = require("./services/consultarBoletoService");
+const { baixarBoletoComRetry } = require("./services/baixarBoletoService");
 const consultarBoletosPendentes = require("./services/consultarBoletosPendentesService");
 const consultarBoletosLiquidados = require("./services/consultarBoletosLiquidadosService");
 const alterarBoleto = require("./services/alterarBoletoService");
@@ -168,7 +169,7 @@ async function processarBoleto(id, pool) {
         .input("idDup", sql.Int, data.duplicataId)
         .input("linhaDigitavel", sql.VarChar(60), linhaDigitavelValue)
         .input("codigoBarra", sql.VarChar(50), codBarrasValue)
-        .input("nossoNumero", sql.VarChar(50), nossoNumeroValue)
+        .input("nossoNumero", sql.VarChar(50), nossoNumeroFull)
         .input("pixQrCode", sql.VarChar(500), pixQrCodeValue)
         .input("numBoleto", sql.Int, parseInt(dados_bradesco_api.snumero10))
         .input("statusBol", sql.Int, dados_bradesco_api.codStatus10)
@@ -246,7 +247,19 @@ async function processarBoletoComRetry(id, pool, maxTentativas = 3) {
       );
 
       if (tentativa === maxTentativas) {
-        // Última tentativa, retorna erro
+        console.log(`Tentativa ${tentativa} - msgErro: ${msgErro}`);
+        console.log(`deveTentarNovamente: ${deveTentarNovamente}`);
+
+        if (
+          msgErro.includes("Erro na requisição para a API do Bradesco: 422")
+        ) {
+          return {
+            id,
+            error:
+              "Bradesco não conseguiu gerar o boleto com os dados informados.",
+            status: 0,
+          };
+        }
         return {
           id,
           error: msgErro,
@@ -439,7 +452,7 @@ app.post("/consulta_boleto", async (req, res) => {
     INNER JOIN API_BOLETO_CAD_CONVENIO CO ON CO.IDCONTA = B.API_PIX_ID
     INNER JOIN GER_EMPRESA E ON E.GER_EMP_ID = D.COR_DUP_IDEMPRESA
     LEFT JOIN COR_BOLETO_BANCARIO BB ON BB.ID_DUPLICATA = D.COR_DUP_ID
-    WHERE BB.ID_BOLETO = @id;
+    WHERE D.COR_DUP_ID = @id;
     `);
 
     const data = dadosDup.recordset[0];
@@ -483,22 +496,24 @@ app.post("/consulta_boleto", async (req, res) => {
       data.clientSecret
     );
 
-    if (!resultado) {
-      throw new Error("Não foi possível fazer a consulta no Bradesco.");
+    if (!resultado || resultado.error) {
+      throw new Error(
+        resultado ? resultado.error : "Não foi possível fazer a consulta."
+      );
     }
 
     let dataMov = new Date();
     let movimento = false;
 
     // Faz update no registro do boleto no banco após a consulta
-    if (resultado?.titulo.codStatus != data.status) {
+    if (resultado?.titulo?.codStatus != data.status) {
       movimento = true;
       const request9 = new sql.Request();
       await request9
         .input("dataMovimento", sql.DateTime, dataMov)
         .input("codStatus", sql.Int, resultado.titulo.codStatus)
         .input("id", sql.Int, data.idBoleto).query(`
-        UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus WHERE ID_BOLETO = @id
+        UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus WHERE ID_DUPLICATA = @id
       `);
 
       console.log("Boleto atualizado com novo status.");
@@ -506,23 +521,28 @@ app.post("/consulta_boleto", async (req, res) => {
 
     if (movimento) {
       res.json({
-        duplicata: data.duplicataId,
+        duplicata: id,
         dataMovimento: dataMov,
         status: resultado.titulo.codStatus,
         resultado: resultado,
+        error: null,
       });
     } else {
       res.json({
-        duplicata: data.duplicataId,
+        duplicata: id,
         dataMovimento: null,
-        status: resultado.titulo.codStatus,
+        status: resultado?.titulo?.codStatus,
         resultado: resultado,
+        error: null,
       });
     }
   } catch (error) {
     console.error("Erro geral ao consultar o boleto: ", error);
     res.json({
       duplicata: id,
+      dataMovimento: null,
+      status: 0,
+      resultado: null,
       error: error.message,
     });
   } finally {
@@ -896,6 +916,130 @@ app.post("/consultar_liquidados", async (req, res) => {
   }
 });
 
+app.post("/baixar_boleto", async (req, res) => {
+  const { id } = req.body;
+  if (!id) {
+    return res.status(400).json({ error: "ID não foi fornecido." });
+  }
+
+  let pool;
+
+  try {
+    pool = await sql.connect({
+      server: process.env.DB_SERVER,
+      database: process.env.DB_DATABASE,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 1433,
+      options: {
+        encrypt: false,
+        trustServerCertificate: true,
+      },
+    });
+    // Pega os dados do banco para gerar o payload
+    const request10 = new sql.Request();
+    const dadosDup = await request10.input("id", sql.Int, id).query(`
+      SELECT
+      D.COR_DUP_ID AS duplicataId,
+      D.COR_DUP_IDEMPRESA AS idEmpresa,
+      B.CLIENTID AS clientId,
+      B.CLIENTSECRET AS clientSecret,
+      B.CAMINHO_CRT AS caminhoCrt,
+      B.SENHA_CRT AS senhaCrt,
+      B.API_PIX_ID AS idConta,
+      B.CONTA AS conta,
+      B.AGENCIA AS agencia,
+      CO.CARTEIRA AS carteira,
+      BB.STATUS_BOL AS status,
+      BB.ID_BOLETO AS idBoleto,
+      BB.NOSSO_NUMERO AS nossoNumero,
+      E.GER_EMP_C_N_P_J_ AS cpfCnpjEmpresa
+    FROM COR_CADASTRO_DE_DUPLICATAS D
+    INNER JOIN API_PIX_CADASTRO_DE_CONTA B ON D.COR_CLI_BANCO = B.API_PIX_ID
+    INNER JOIN API_BOLETO_CAD_CONVENIO CO ON CO.IDCONTA = B.API_PIX_ID
+    INNER JOIN GER_EMPRESA E ON E.GER_EMP_ID = D.COR_DUP_IDEMPRESA
+    LEFT JOIN COR_BOLETO_BANCARIO BB ON BB.ID_DUPLICATA = D.COR_DUP_ID
+    WHERE D.COR_DUP_ID = @id;
+    `);
+
+    const data = dadosDup.recordset[0];
+
+    if (!data) {
+      throw new Error("Não existe o boleto informado.");
+    }
+
+    // Formata os campos para inserir no payload
+    const cpfCnpjString = parseInt(data.cpfCnpjEmpresa.substring(0, 9));
+    let filialint = 0;
+    let controleInt = parseInt(data.cpfCnpjEmpresa.slice(-2));
+    let agencia = data.agencia ? String(data.agencia).substring(0, 4) : "0000";
+    let conta = data.conta ? String(data.conta).substring(0, 7) : "0000000";
+    const isCpf = data.cpfCnpjEmpresa.length == 11 ? true : false;
+    if (!isCpf) {
+      filialint = parseInt(data.cpfCnpjEmpresa.substring(9, 12));
+    }
+
+    const negociacaoString = parseInt(String(agencia + conta));
+
+    const payload = {
+      cpfCnpj: {
+        cpfCnpj: cpfCnpjString,
+        filial: filialint,
+        controle: controleInt,
+      },
+      produto: parseInt(data.carteira),
+      negociacao: negociacaoString,
+      nossoNumero: parseInt(data.nossoNumero),
+      sequencia: 0,
+      codigoBaixa: 57,
+    };
+
+    const resultado = await baixarBoletoComRetry(
+      id,
+      payload,
+      data.caminhoCrt,
+      data.senhaCrt,
+      data.clientId,
+      data.clientSecret
+    );
+
+    if (!resultado || resultado.error) {
+      throw new Error(
+        resultado
+          ? resultado.error
+          : "Não foi possível solicitar a baixa no bradesco."
+      );
+    }
+
+    if (resultado && resultado.status != 200) {
+      res.json({
+        duplicata: data.duplicataId,
+        error: resultado.mensagem,
+        status: resultado.dados.status,
+        resultado: resultado,
+      });
+    }
+    // Fazer a inserão no banco do novo status do boleto - tirar id da duplicata do boleto(desvincular), adicionar data de movimento(hoje) e mudar status do boleto.
+
+    res.json({
+      duplicata: id,
+      error: null,
+      status: resultado.dados.status,
+      resultado: resultado,
+    });
+  } catch (error) {
+    console.error("Erro geral ao baixar boleto:", error);
+    res.json({
+      duplicata: id,
+      error: error.message,
+      status: 0,
+      resultado: null,
+    });
+  } finally {
+    if (pool) await pool.close();
+  }
+});
+
 // Endpoint para alteração de boleto
 app.post("/alterar_boleto", async (req, res) => {
   const { id } = req.body;
@@ -1084,7 +1228,7 @@ app.post("/alterar_boleto", async (req, res) => {
 
     res.json({ resultado });
   } catch (error) {
-    console.error("Erro geral ao gerar boletos:", error);
+    console.error("Erro geral ao alterar boleto:", error);
     res.status(500).json({ error: error.message });
   } finally {
     if (pool) await pool.close();

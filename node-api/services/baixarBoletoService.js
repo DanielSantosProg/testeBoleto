@@ -5,7 +5,7 @@ const axios = require("axios");
 const sql = require("mssql");
 const getToken = require("../gerarToken");
 
-async function consultarBoletoComRetry(
+async function baixarBoletoComRetry(
   id,
   payload,
   CAMINHO_CRT,
@@ -20,7 +20,7 @@ async function consultarBoletoComRetry(
   while (tentativa < maxTentativas) {
     tentativa++;
     try {
-      resultado = await consultarBoleto(
+      resultado = await baixarBoleto(
         payload,
         CAMINHO_CRT,
         SENHA_CRT,
@@ -64,7 +64,7 @@ async function consultarBoletoComRetry(
   }
 }
 
-async function consultarBoleto(
+async function baixarBoleto(
   payload,
   CAMINHO_CRT,
   SENHA_CRT,
@@ -73,7 +73,7 @@ async function consultarBoleto(
 ) {
   try {
     const url =
-      "https://openapisandbox.prebanco.com.br/boleto/cobranca-consulta/v1/consultar";
+      "https://openapisandbox.prebanco.com.br/boleto/cobranca-baixa/v1/baixar";
 
     //Busca o token para fazer a operação de consulta
     const token = await getToken(
@@ -104,4 +104,4 @@ async function consultarBoleto(
   }
 }
 
-module.exports = { consultarBoletoComRetry, consultarBoleto };
+module.exports = { baixarBoletoComRetry, baixarBoleto };
