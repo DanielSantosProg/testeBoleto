@@ -202,7 +202,7 @@ async function processarBoleto(id, pool) {
     return {
       id,
       error: error.message,
-      status: "NAO GERADO",
+      status: 0,
     };
   }
 }
@@ -229,14 +229,15 @@ async function processarBoletoComRetry(id, pool, maxTentativas = 3) {
       // Verifica se o erro contém a mensagem específica para retry
       const deveTentarNovamente =
         msgErro.includes("Erro na requisição para a API do Bradesco: 504") ||
-        msgErro.toLowerCase().includes("gateway time-out");
+        msgErro.toLowerCase().includes("gateway time-out") ||
+        msgErro.includes("Erro na requisição para a API do Bradesco: 422");
 
       if (!deveTentarNovamente) {
         // Erro não é para retry, retorna imediatamente
         return {
           id,
           error: msgErro,
-          status: "NAO GERADO",
+          status: 0,
         };
       }
 
@@ -249,7 +250,7 @@ async function processarBoletoComRetry(id, pool, maxTentativas = 3) {
         return {
           id,
           error: msgErro,
-          status: "NAO GERADO",
+          status: 0,
         };
       }
 
@@ -309,7 +310,7 @@ function OrderIds(ids, orderedIds, results) {
       results.push({
         id: item.COR_DUP_ID,
         error: "Duplicata já gerou boleto",
-        status: "NAO GERADO",
+        status: 100,
       });
     }
   });
