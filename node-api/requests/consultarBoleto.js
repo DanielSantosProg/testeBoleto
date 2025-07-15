@@ -21,13 +21,18 @@ async function consulta(id) {
     const duplicata = response.data.duplicata;
     const dados = response.data.resultado;
 
-    console.log(`Boleto da duplicata de ID ${id} encontrado.`);
-    console.log("\nDados: ");
-    console.log(dados);
+    if (!response.data.error) {
+      console.log(`\nBoleto da duplicata de ID ${id} encontrado.`);
+      console.log("\nDados: ");
+      console.log(dados);
 
-    console.log("\nStatus: ", status);
-    console.log("Data de Movimentação: ", dataMovimentacao);
-    console.log("Duplicata: ", duplicata);
+      console.log("\nStatus: ", status);
+      console.log("Data de Movimentação: ", dataMovimentacao);
+      console.log("Duplicata: ", duplicata);
+    } else {
+      console.log(`\nErro ao consultar o boleto da duplicata de ID ${id}:`);
+      console.log(response.data.error);
+    }
   } catch (error) {
     if (error.response) {
       console.error("Erro na API:", error.response.status);

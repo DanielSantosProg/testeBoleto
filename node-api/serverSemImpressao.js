@@ -398,6 +398,38 @@ app.post("/gerar_boletos", async (req, res) => {
   }
 });
 
+function parseDateFromDDMMYYYY(str) {
+  if (!str) return null;
+
+  str = str.toString();
+
+  if (str.length !== 8) return null;
+
+  let dia = str.substring(0, 2);
+  let mes = str.substring(2, 4);
+  let ano = str.substring(4, 8);
+
+  const date = new Date(`${ano}-${mes}-${dia}T00:00:00Z`);
+
+  if (isNaN(date.getTime())) return null;
+
+  return date;
+}
+
+function formatDateYmd(data) {
+  let date = data;
+  if (!(date instanceof Date)) return "";
+
+  let dia = String(date.getUTCDate()).padStart(2, "0");
+  let mes = String(date.getUTCMonth() + 1).padStart(2, "0");
+  let ano = date.getUTCFullYear();
+  return `${ano}${mes}${dia}`;
+}
+
+function getCampo(obj, path) {
+  return path.reduce((acc, curr) => acc?.[curr], obj);
+}
+
 // Endpoint para consulta de boleto
 app.post("/consulta_boleto", async (req, res) => {
   const { id } = req.body;
@@ -451,7 +483,7 @@ app.post("/consulta_boleto", async (req, res) => {
     INNER JOIN API_PIX_CADASTRO_DE_CONTA B ON D.COR_CLI_BANCO = B.API_PIX_ID
     INNER JOIN API_BOLETO_CAD_CONVENIO CO ON CO.IDCONTA = B.API_PIX_ID
     INNER JOIN GER_EMPRESA E ON E.GER_EMP_ID = D.COR_DUP_IDEMPRESA
-    LEFT JOIN COR_BOLETO_BANCARIO BB ON BB.ID_DUPLICATA = D.COR_DUP_ID
+    INNER JOIN COR_BOLETO_BANCARIO BB ON BB.ID_DUPLICATA = D.COR_DUP_ID
     WHERE D.COR_DUP_ID = @id;
     `);
 
@@ -505,14 +537,32 @@ app.post("/consulta_boleto", async (req, res) => {
     let dataMov = new Date();
     let movimento = false;
 
+    const camposDatas = [
+      ["dataCartor"],
+      ["dataInstr"],
+      ["dtPagto"],
+      ["baixa", "data"],
+    ];
+
     // Faz update no registro do boleto no banco após a consulta
     if (resultado?.titulo?.codStatus != data.status) {
       movimento = true;
+
+      for (const path of camposDatas) {
+        const val = getCampo(resultado.titulo, path);
+        if (val != 0) {
+          const dateObj = parseDateFromDDMMYYYY(val);
+          if (dateObj) {
+            dataMov = formatDateYmd(dateObj);
+          }
+        }
+      }
+
       const request9 = new sql.Request();
       await request9
         .input("dataMovimento", sql.DateTime, dataMov)
         .input("codStatus", sql.Int, resultado.titulo.codStatus)
-        .input("id", sql.Int, data.idBoleto).query(`
+        .input("id", sql.Int, id).query(`
         UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus WHERE ID_DUPLICATA = @id
       `);
 
@@ -1019,7 +1069,7 @@ app.post("/baixar_boleto", async (req, res) => {
         resultado: resultado,
       });
     }
-    // Fazer a inserão no banco do novo status do boleto - tirar id da duplicata do boleto(desvincular), adicionar data de movimento(hoje) e mudar status do boleto.
+    // Fazer a inserão no banco do novo status do boleto - tirar id da duplicata do boleto(desvincular) e adicionar data de movimento(dia atual).
 
     res.json({
       duplicata: id,
