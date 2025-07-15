@@ -22,8 +22,8 @@ async function fetchDbData(id, pool) {
              C.COR_CLI_NOME AS clienteNome, C.COR_CLI_CNPJ_CPF AS cnpjCpfCliente,
              B.AGENCIA AS agencia, B.CONTA AS conta, B.CODBANCO AS codBanco,
              CO.NOSSONUMERO AS nossoNumero, CO.NUMCONTRATO as numContrato,
-             CO.CARTEIRA AS carteira, CO.PROTESTO AS protesto, CO.DIASPROTESTO AS diasProtesto
-             CO.JUROS_DIA AS juros, CO.MODALIDADE_JUROS as modalidadeJuros,
+             CO.CARTEIRA AS carteira, CO.PROTESTO AS protesto, CO.DIASPROTESTO AS diasProtesto,
+             CO.LIMITE_RECEB_DIAS AS diasDecurso, CO.JUROS_DIA AS juros, CO.MODALIDADE_JUROS as modalidadeJuros,
              CO.MULTA as multa, CO.TIPO_MULTA AS tipoMulta, CO.DIAS_MULTA AS diasMulta,
              E.GER_EMP_C_N_P_J_ AS empresaCnpj,
              CN.COR_CON_NUMERO_ENDERECO AS numeroEnderecoContato,
@@ -81,6 +81,7 @@ async function fetchDbData(id, pool) {
     };
 
     const {
+      diasDecurso,
       dupDocumento,
       dataEmissao,
       dataVencimento,
@@ -116,6 +117,7 @@ async function fetchDbData(id, pool) {
     const payload = {
       ctitloCobrCdent: String(nossoNumero ?? "0"),
       registrarTitulo: "1",
+      qtdDecurPrz: String(diasDecurso ?? "0"),
       codUsuario: "APISERVIC",
       nroCpfCnpjBenef: String(empresaCnpj ?? "").substring(0, 8),
       filCpfCnpjBenef: String(empresaCnpj ?? "").substring(8, 12),

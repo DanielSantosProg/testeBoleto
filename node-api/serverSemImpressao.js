@@ -112,7 +112,11 @@ async function processarBoleto(id, pool) {
         .input("valor", sql.Float, parseFloat(data.dupValor))
         .input("linhaDigitavel", sql.VarChar(60), linhaDigitavelValue)
         .input("codigoBarra", sql.VarChar(50), codBarrasValue)
-        .input("nossoNumero", sql.VarChar(50), nossoNumeroFull)
+        .input(
+          "nossoNumero",
+          sql.VarChar(50),
+          String(dados_bradesco_api?.ctitloCobrCdent)
+        )
         .input("idDuplicata", sql.Int, data.duplicataId)
         .input("anoBoleto", sql.Int, new Date().getFullYear())
         .input("idContaCorrente", sql.Int, data.idConta)
@@ -224,7 +228,6 @@ async function processarBoletoComRetry(id, pool, maxTentativas = 3) {
 
       if (tentativa === maxTentativas) {
         console.log(`Tentativa ${tentativa} - msgErro: ${msgErro}`);
-        console.log(`deveTentarNovamente: ${deveTentarNovamente}`);
 
         if (
           msgErro.includes("Erro na requisição para a API do Bradesco: 422")
