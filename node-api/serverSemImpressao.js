@@ -5,18 +5,17 @@ const {
   consultarBoletoComRetry,
 } = require("./services/consultarBoletoService");
 const { baixarBoletoComRetry } = require("./services/baixarBoletoService");
+const alterarBoleto = require("./services/alterarBoletoService");
 // const consultarBoletosPendentes = require("./services/consultarBoletosPendentesService");
 // const consultarBoletosLiquidados = require("./services/consultarBoletosLiquidadosService");
-const alterarBoleto = require("./services/alterarBoletoService");
+
 let fetchDbData;
 process.env.DB_AMBIENTE == 1
   ? (fetchDbData = require("./BoletoDataSandbox"))
   : (fetchDbData = require("./BoletoData"));
 
 // Importa dependências do Node
-const puppeteer = require("puppeteer");
 const sql = require("mssql");
-const fs = require("fs");
 const path = require("path");
 
 // Requere o arquivo.env para a conexão com o banco de dados
@@ -151,7 +150,8 @@ async function processarBoleto(id, pool) {
         .input("codBarras", sql.VarChar(50), codBarrasValue).query(`
           UPDATE COR_CADASTRO_DE_DUPLICATAS
           SET COR_DUP_PROTOCOLO = @nossoNumero,
-              COR_DUP_COD_BARRAS = @codBarras
+              COR_DUP_COD_BARRAS = @codBarras,
+              COR_DUP_LOCALIZACAO = ISNULL((SELECT TOP 1 L.COP_LOC_ID FROM COP_LOCALIZACAO_CORE_E_COPA L WITH (NOLOCK) WHERE L.COP_LOC_CODIGO = ISNULL((SELECT TOP 1 S.LOCALIZACAO FROM STATUS_BOLETO_COBRANCA S WITH (NOLOCK) WHERE S.COD_STATUS = 1 AND S.BANCO = 237), 2) AND L.COP_LOC_DESTINO = 'CR'), COR_DUP_LOCALIZACAO)              
           WHERE COR_DUP_ID = @id
         `);
 
@@ -393,16 +393,6 @@ function parseDateFromDDMMYYYY(str) {
   if (isNaN(date.getTime())) return null;
 
   return date;
-}
-
-function formatDateYmd(data) {
-  let date = data;
-  if (!(date instanceof Date)) return "";
-
-  let dia = String(date.getUTCDate()).padStart(2, "0");
-  let mes = String(date.getUTCMonth() + 1).padStart(2, "0");
-  let ano = date.getUTCFullYear();
-  return `${ano}${mes}${dia}`;
 }
 
 function getCampo(obj, path) {
