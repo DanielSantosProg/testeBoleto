@@ -9,20 +9,8 @@ function formatDate(data) {
   return `${dia}.${mes}.${ano}`;
 }
 
-async function fetchDbData(id) {
-  let pool;
+async function fetchDbData(id, pool) {
   try {
-    pool = await sql.connect({
-      server: process.env.DB_SERVER,
-      database: process.env.DB_DATABASE,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      options: {
-        encrypt: false,
-        trustServerCertificate: true,
-      },
-    });
-
     const dataSelect = await pool.request().input("id", sql.Int, id).query(`
       WITH Contacts AS (
           SELECT *, ROW_NUMBER() OVER (PARTITION BY COR_CON_CLI_ID ORDER BY COR_CON_ID ASC) as cont 
@@ -34,7 +22,7 @@ async function fetchDbData(id) {
              C.COR_CLI_NOME AS clienteNome, C.COR_CLI_CNPJ_CPF AS cnpjCpfCliente,
              B.AGENCIA AS agencia, B.CONTA AS conta, B.CODBANCO AS codBanco,
              CO.NOSSONUMERO AS nossoNumero, CO.NUMCONTRATO as numContrato,
-             CO.CARTEIRA AS carteira, CO.PROTESTO AS protesto,
+             CO.CARTEIRA AS carteira, CO.PROTESTO AS protesto, CO.DIASPROTESTO AS diasProtesto
              CO.JUROS_DIA AS juros, CO.MODALIDADE_JUROS as modalidadeJuros,
              CO.MULTA as multa, CO.TIPO_MULTA AS tipoMulta, CO.DIAS_MULTA AS diasMulta,
              E.GER_EMP_C_N_P_J_ AS empresaCnpj,
@@ -107,6 +95,7 @@ async function fetchDbData(id) {
       numContrato,
       carteira,
       protesto,
+      diasProtesto,
       juros,
       modalidadeJuros,
       multa,
@@ -128,19 +117,19 @@ async function fetchDbData(id) {
       ctitloCobrCdent: String(nossoNumero ?? "0"),
       registrarTitulo: "1",
       codUsuario: "APISERVIC",
-      nroCpfCnpjBenef: String(empresaCnpj).substring(0, 8),
-      filCpfCnpjBenef: String(empresaCnpj).substring(8, 12),
-      digCpfCnpjBenef: String(empresaCnpj).slice(-2),
+      nroCpfCnpjBenef: String(empresaCnpj ?? "").substring(0, 8),
+      filCpfCnpjBenef: String(empresaCnpj ?? "").substring(8, 12),
+      digCpfCnpjBenef: String(empresaCnpj ?? "").slice(-2),
       tipoAcesso: "2",
       cpssoaJuridContr: String(numContrato ?? "0"),
       ctpoContrNegoc: "000",
       nseqContrNegoc: String(numContrato ?? "0"),
       cidtfdProdCobr: String(carteira ?? "0"),
-      cnegocCobr: String((agencia ?? "") + (conta ?? "")),
-      codigoBanco: String(codBanco ?? "0"),
+      cnegocCobr: String((agencia ?? "") + "0000000" + (conta ?? "")),
+      codigoBanco: String(codBanco ?? "237"),
       filler: "",
       eNseqContrNegoc: String(numContrato ?? "0"),
-      tipoRegistro: "001",
+      tipoRegistro: protesto ? "002" : "001",
       cprodtServcOper: "00000000",
       ctitloCliCdent: String(dupDocumento ?? "0"),
       demisTitloCobr: formatDate(dataEmissao),
@@ -152,7 +141,7 @@ async function fetchDbData(id) {
       cespceTitloCobr: dupTipoMap[dupTipo] || "00",
       cindcdAceitSacdo: "N",
       ctpoProteTitlo: protesto ? "2" : "00",
-      ctpoPrzProte: protesto ? "1" : "00",
+      ctpoPrzProte: protesto ? diasProtesto : "00",
       ctpoProteDecurs: protesto ? "2" : "00",
       ctpoPrzDecurs: "00",
       cctrlPartcTitlo: "0000000000000000000000000",
@@ -236,8 +225,6 @@ async function fetchDbData(id) {
   } catch (error) {
     console.error("Ocorreu um erro ao pegar os dados:", error);
     throw error;
-  } finally {
-    if (pool && pool.connected) await pool.close();
   }
 }
 

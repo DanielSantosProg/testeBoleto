@@ -5,6 +5,9 @@ const axios = require("axios");
 const sql = require("mssql");
 const getToken = require("../gerarToken");
 
+// Requere o arquivo.env para a conexão com o banco de dados
+require("dotenv").config();
+
 async function consultarBoletoComRetry(
   id,
   payload,
@@ -72,8 +75,12 @@ async function consultarBoleto(
   CLIENTSECRET
 ) {
   try {
-    const url =
-      "https://openapisandbox.prebanco.com.br/boleto/cobranca-consulta/v1/consultar";
+    let url;
+    process.env.DB_AMBIENTE == 1
+      ? (url =
+          "https://openapisandbox.prebanco.com.br/boleto/cobranca-consulta/v1/consultar")
+      : (url =
+          "https://openapi.bradesco.com.br/boleto/cobranca-consulta/v1/consultar");
 
     //Busca o token para fazer a operação de consulta
     const token = await getToken(
