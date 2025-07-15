@@ -387,7 +387,7 @@ app.post("/gerar_boletos", async (req, res) => {
       }
     }
 
-    res.json({
+    return res.json({
       resultados: results,
     });
   } catch (error) {
@@ -538,10 +538,10 @@ app.post("/consulta_boleto", async (req, res) => {
     let movimento = false;
 
     const camposDatas = [
-      ["dataCartor"],
-      ["dataInstr"],
       ["dtPagto"],
       ["baixa", "data"],
+      ["dataCartor"],
+      ["dataInstr"],
     ];
 
     // Faz update no registro do boleto no banco após a consulta
@@ -550,10 +550,11 @@ app.post("/consulta_boleto", async (req, res) => {
 
       for (const path of camposDatas) {
         const val = getCampo(resultado.titulo, path);
-        if (val != 0) {
+        if (val && val != 0 && val !== "") {
           const dateObj = parseDateFromDDMMYYYY(val);
-          if (dateObj) {
-            dataMov = formatDateYmd(dateObj);
+          if (dateObj && !isNaN(dateObj)) {
+            dataMov = dateObj;
+            break;
           }
         }
       }
@@ -561,16 +562,17 @@ app.post("/consulta_boleto", async (req, res) => {
       const request9 = new sql.Request();
       await request9
         .input("dataMovimento", sql.DateTime, dataMov)
+        .input("dataConsulta", sql.DateTime, new Date())
         .input("codStatus", sql.Int, resultado.titulo.codStatus)
         .input("id", sql.Int, id).query(`
-        UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus WHERE ID_DUPLICATA = @id
+        UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus, DATA_CONSULTA = @dataConsulta WHERE ID_DUPLICATA = @id
       `);
 
       console.log("Boleto atualizado com novo status.");
     }
 
     if (movimento) {
-      res.json({
+      return res.json({
         duplicata: id,
         dataMovimento: dataMov,
         status: resultado.titulo.codStatus,
@@ -578,7 +580,7 @@ app.post("/consulta_boleto", async (req, res) => {
         error: null,
       });
     } else {
-      res.json({
+      return res.json({
         duplicata: id,
         dataMovimento: null,
         status: resultado?.titulo?.codStatus,
@@ -1062,16 +1064,23 @@ app.post("/baixar_boleto", async (req, res) => {
     }
 
     if (resultado && resultado.status != 200) {
-      res.json({
+      return res.json({
         duplicata: data.duplicataId,
         error: resultado.mensagem,
         status: resultado.dados.status,
         resultado: resultado,
       });
+    } else {
+      const request = new sql.Request();
+      await request
+        .input("dataMovimento", sql.DateTime, new Date())
+        .input("codStatus", sql.Int, resultado.dados.status)
+        .input("id", sql.Int, id).query(`
+          UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus, ID_DUPLICATA = NULL WHERE ID_DUPLICATA = @id
+        `);
     }
-    // Fazer a inserão no banco do novo status do boleto - tirar id da duplicata do boleto(desvincular) e adicionar data de movimento(dia atual).
 
-    res.json({
+    return res.json({
       duplicata: id,
       error: null,
       status: resultado.dados.status,
