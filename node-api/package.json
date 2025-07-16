@@ -2,14 +2,16 @@
   "name": "gerar-boleto-bradesco",
   "version": "1.0.3",
   "description": "API Node.js + Python para geração de boletos Bradesco com QR Code",
-  "main": "index.js",
+  "main": "indexSemImpressao.js",
   "scripts": {
     "start": "node indexSemImpressao.js",
     "start2": "node index.js",
     "gerar-boletos": "node requests/gerarPdf.js",
     "gerar-boletos-dados": "node requests/gerarBoletos.js",
     "consultar-boleto": "node requests/consultarBoleto.js",
-    "baixar-boleto": "node requests/baixarBoleto.js"
+    "baixar-boleto": "node requests/baixarBoleto.js",
+    "i-service": "node windowsService.js",
+    "u-service": "node windowsServiceUninstall.js"
   },
   "keywords": [
     "boleto",
@@ -26,8 +28,7 @@
     "axios": "^1.10.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
-    "html-pdf": "^3.0.1",
     "mssql": "^11.0.1",
-    "puppeteer": "^24.10.2"
+    "node-windows": "^1.0.0-beta.8"
   }
 }
