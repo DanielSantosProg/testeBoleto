@@ -686,16 +686,17 @@ app.post("/baixar_boleto", async (req, res) => {
       const request = new sql.Request();
       await request
         .input("dataMovimento", sql.DateTime, new Date())
+        .input("dataConsulta", sql.DateTime, new Date())
         .input("codStatus", sql.Int, resultado.dados.status)
         .input("id", sql.Int, id).query(`
-          UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus, ID_DUPLICATA = NULL WHERE ID_DUPLICATA = @id
+          UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus, DATA_CONSULTA = @dataConsulta, ID_DUPLICATA = NULL WHERE ID_DUPLICATA = @id
         `);
 
       // Atualiza o COR_CADASTRO_DE_DUPLICATAS
       const request2 = new sql.Request();
       await request2.input("id", sql.Int, id).query(`
           UPDATE COR_CADASTRO_DE_DUPLICATAS
-          SET COR_DUP_LOCALIZACAO = ISNULL((SELECT TOP 1 COP_LOC_ID FROM COP_LOCALIZACAO_CORE_E_COPA INNER JOIN STATUS_BOLETO_COBRANCA ON BANCO = 237 AND CANCELAMENTO = 1 WHERE LOCALIZACAO = COP_LOC_CODIGO AND COP_LOC_DESTINO = 'CR'), COR_DUP_LOCALIZACAO)              
+          SET COR_DUP_COD_BARRAS = NULL, COR_DUP_PROTOCOLO = NULL, COR_DUP_LOCALIZACAO = ISNULL((SELECT TOP 1 COP_LOC_ID FROM COP_LOCALIZACAO_CORE_E_COPA INNER JOIN STATUS_BOLETO_COBRANCA ON BANCO = 237 AND CANCELAMENTO = 1 WHERE LOCALIZACAO = COP_LOC_CODIGO AND COP_LOC_DESTINO = 'CR'), COR_DUP_LOCALIZACAO)              
           WHERE COR_DUP_ID = @id
         `);
     }
