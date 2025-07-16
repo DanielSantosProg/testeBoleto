@@ -590,6 +590,7 @@ app.post("/baixar_boleto", async (req, res) => {
 
   let pool;
   let resultado = null;
+  let transaction;
 
   try {
     pool = await sql.connect({
@@ -603,6 +604,9 @@ app.post("/baixar_boleto", async (req, res) => {
         trustServerCertificate: true,
       },
     });
+    transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
     // Pega os dados do banco para gerar o payload
     const request10 = new sql.Request();
     const dadosDup = await request10.input("id", sql.Int, id).query(`
@@ -687,7 +691,7 @@ app.post("/baixar_boleto", async (req, res) => {
       });
     } else {
       // Atualiza o COR_BOLETO_BANCARIO
-      const request = new sql.Request();
+      const request = new sql.Request(transaction);
       await request
         .input("dataMovimento", sql.DateTime, new Date())
         .input("dataConsulta", sql.DateTime, new Date())
@@ -697,12 +701,14 @@ app.post("/baixar_boleto", async (req, res) => {
         `);
 
       // Atualiza o COR_CADASTRO_DE_DUPLICATAS
-      const request2 = new sql.Request();
+      const request2 = new sql.Request(transaction);
       await request2.input("id", sql.Int, id).query(`
           UPDATE COR_CADASTRO_DE_DUPLICATAS
           SET COR_DUP_COD_BARRAS = NULL, COR_DUP_PROTOCOLO = NULL, COR_DUP_LOCALIZACAO = ISNULL((SELECT TOP 1 COP_LOC_ID FROM COP_LOCALIZACAO_CORE_E_COPA INNER JOIN STATUS_BOLETO_COBRANCA ON BANCO = 237 AND CANCELAMENTO = 1 WHERE LOCALIZACAO = COP_LOC_CODIGO AND COP_LOC_DESTINO = 'CR'), COR_DUP_LOCALIZACAO)              
           WHERE COR_DUP_ID = @id
         `);
+
+      await transaction.commit();
     }
 
     return res.json({
@@ -712,6 +718,13 @@ app.post("/baixar_boleto", async (req, res) => {
       resultado: resultado,
     });
   } catch (error) {
+    if (transaction) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackErr) {
+        console.error("Erro ao dar rollback:", rollbackErr);
+      }
+    }
     console.error(error);
     res.json({
       duplicata: id,
