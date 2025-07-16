@@ -45,8 +45,7 @@ async function consultarBoletoComRetry(
       const deveTentarNovamente = statusCode === 504 || statusCode === 422;
 
       if (!deveTentarNovamente) {
-        // Erro não é para retry, retorna imediatamente
-        let erro = `Erro ao fazer a consulta: ${msgErro}`;
+        let erro = { error: `Erro ao fazer a consulta: ${msgErro}` };
         return erro;
       }
 
@@ -55,9 +54,9 @@ async function consultarBoletoComRetry(
       );
 
       if (tentativa === maxTentativas) {
-        // Última tentativa, retorna erro
-        let erro =
-          "Chegou ao limite de tentativas, tente novamente mais tarde.";
+        let erro = {
+          error: "Chegou ao limite de tentativas, tente novamente mais tarde.",
+        };
         return erro;
       }
 

@@ -360,8 +360,7 @@ async function requisicaoBradesco(
     const resultado = response.data;
 
     if (!resultado || Object.keys(resultado).length === 0) {
-      console.log("Verifique os dados do boleto.");
-      return;
+      return { error: "Resposta vazia da API ou dados inválidos." };
     }
 
     if (resultado.error) {

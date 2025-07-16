@@ -89,7 +89,11 @@ async function processarBoleto(id, pool) {
     const { dados_bradesco_api, nossoNumeroFull, cod_barras } = resultado;
 
     if (!dados_bradesco_api) {
-      throw new Error("Dados do bradesco incorretos.");
+      throw new Error(
+        resultado && resultado.error
+          ? resultado.error
+          : "Dados do bradesco incorretos."
+      );
     }
 
     if (resultado) {
@@ -407,6 +411,7 @@ app.post("/consulta_boleto", async (req, res) => {
   }
 
   let pool;
+  let resultado = null;
 
   try {
     pool = await sql.connect({
@@ -488,7 +493,7 @@ app.post("/consulta_boleto", async (req, res) => {
       status: 0,
     };
 
-    const resultado = await consultarBoletoComRetry(
+    resultado = await consultarBoletoComRetry(
       id,
       payload,
       data.caminhoCrt,
@@ -498,9 +503,7 @@ app.post("/consulta_boleto", async (req, res) => {
     );
 
     if (!resultado || resultado.error) {
-      throw new Error(
-        resultado ? resultado.error : "Não foi possível fazer a consulta."
-      );
+      throw new Error(resultado?.error || "Não foi possível fazer a consulta.");
     }
 
     let dataMov = new Date();
@@ -558,7 +561,7 @@ app.post("/consulta_boleto", async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Erro geral ao consultar o boleto: ", error);
+    console.error(error);
     res.json({
       duplicata: id,
       dataMovimento: null,
@@ -586,6 +589,7 @@ app.post("/baixar_boleto", async (req, res) => {
   }
 
   let pool;
+  let resultado = null;
 
   try {
     pool = await sql.connect({
@@ -657,7 +661,7 @@ app.post("/baixar_boleto", async (req, res) => {
       codigoBaixa: 57,
     };
 
-    const resultado = await baixarBoletoComRetry(
+    resultado = await baixarBoletoComRetry(
       id,
       payload,
       data.caminhoCrt,
@@ -708,7 +712,7 @@ app.post("/baixar_boleto", async (req, res) => {
       resultado: resultado,
     });
   } catch (error) {
-    console.error("Erro geral ao baixar boleto:", error);
+    console.error(error);
     res.json({
       duplicata: id,
       error: error.message,

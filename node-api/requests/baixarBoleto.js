@@ -13,7 +13,7 @@ async function baixa(id) {
     );
 
     if (response.data.error) {
-      throw new Error(`Erro no boleto de ID ${id}: ${response.data.error}`);
+      throw new Error(response.data.error);
     }
 
     const duplicata = response.data.duplicata;
