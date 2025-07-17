@@ -31,7 +31,7 @@ async function baixarBoletoComRetry(
         CLIENTSECRET
       );
 
-      // Se a função retornar um objeto com erro, lance para entrar no catch
+      // Se a função retornar um objeto com erro, entra no catch
       if (resultado.error) {
         throw new Error(resultado.error);
       }
@@ -45,8 +45,17 @@ async function baixarBoletoComRetry(
       const deveTentarNovamente = statusCode === 504 || statusCode === 422;
 
       if (!deveTentarNovamente) {
-        let erro = { error: `Erro ao fazer a consulta: ${msgErro}` }; // objeto!
-        return erro;
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.mensagem &&
+          error.response.data.causa
+        ) {
+          return {
+            error: `${error.response.data.mensagem} ${error.response.data.causa}`,
+          };
+        }
+        return { error: msgErro };
       }
 
       console.warn(
@@ -55,7 +64,8 @@ async function baixarBoletoComRetry(
 
       if (tentativa === maxTentativas) {
         let erro = {
-          error: "Chegou ao limite de tentativas, tente novamente mais tarde.",
+          error:
+            "Chegou ao limite de tentativas, tente novamente em alguns instantes.",
         };
         return erro;
       }
