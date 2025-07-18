@@ -4,18 +4,88 @@ const path = require("path");
 const axios = require("axios");
 const getToken = require("../gerarToken");
 
+async function alterarBoletoComRetry(
+  id,
+  payload,
+  CAMINHO_CRT,
+  SENHA_CRT,
+  CLIENTID,
+  CLIENTSECRET,
+  TXID,
+  maxTentativas = 3
+) {
+  let tentativa = 0;
+  let resultado;
+
+  while (tentativa < maxTentativas) {
+    tentativa++;
+    try {
+      resultado = await alterarBoleto(
+        payload,
+        CAMINHO_CRT,
+        SENHA_CRT,
+        CLIENTID,
+        CLIENTSECRET,
+        TXID
+      );
+
+      if (resultado.error) {
+        throw new Error(resultado.error);
+      }
+
+      return resultado;
+    } catch (error) {
+      const msgErro = error.message || "";
+      const statusCode = error.response ? error.response.status : null;
+
+      const deveTentarNovamente =
+        statusCode === 504 ||
+        (statusCode === 422 && !error.response?.data?.descricaoErro);
+
+      if (!deveTentarNovamente) {
+        if (error.response?.data?.descricaoErro) {
+          return { error: error.response.data.descricaoErro };
+        }
+        return { error: msgErro };
+      }
+
+      console.warn(
+        `Tentativa ${tentativa} para boleto ID ${id} falhou com erro: ${msgErro}`
+      );
+
+      if (tentativa === maxTentativas) {
+        let erroFinal = {
+          error:
+            "Chegou ao limite de tentativas, tente novamente em alguns instantes",
+        };
+        if (statusCode == 422 && error.response?.data?.mensagem) {
+          erroFinal = {
+            error: `Chegou ao limite de tentativas, tente novamente em alguns instantes. ${error.response.data.mensagem}`,
+          };
+        }
+        return erroFinal;
+      }
+
+      // Espera crescente antes da próxima tentativa (ex: 1s, 2s, 3s)
+      await new Promise((res) => setTimeout(res, 1000 * tentativa));
+    }
+  }
+}
+
 async function alterarBoleto(
   payload,
   CAMINHO_CRT,
   SENHA_CRT,
   CLIENTID,
-  CLIENTSECRET
+  CLIENTSECRET,
+  TXID
 ) {
   try {
     const url =
-      "https://openapisandbox.prebanco.com.br/boleto/cobranca-altera/v1/alterar";
+      process.env.DB_AMBIENTE == 1
+        ? "https://openapisandbox.prebanco.com.br/boleto-hibrido/cobranca-alteracao/v1/alteraBoletoConsulta"
+        : "https://openapi.bradesco.com.br/boleto/cobranca-altera/v1/alterar";
 
-    //Busca o token para fazer a operação de consulta
     const token = await getToken(
       CAMINHO_CRT,
       SENHA_CRT,
@@ -33,15 +103,16 @@ async function alterarBoleto(
       headers: {
         Authorization: token,
         "Content-Type": "application/json",
+        txid: TXID,
       },
       httpsAgent,
     });
 
     return response.data;
   } catch (err) {
-    console.error("Erro ao fazer consulta: ", err.message);
-    return null;
+    console.error("Erro ao fazer alteração do boleto: ", err);
+    throw err;
   }
 }
 
-module.exports = alterarBoleto;
+module.exports = { alterarBoletoComRetry, alterarBoleto };

@@ -62,11 +62,16 @@ async function baixarBoletoComRetry(
         `Tentativa ${tentativa} para boleto ID ${id} falhou com erro: ${msgErro}`
       );
 
+      let erro = {
+        error:
+          "Chegou ao limite de tentativas, tente novamente em alguns instantes",
+      };
       if (tentativa === maxTentativas) {
-        let erro = {
-          error:
-            "Chegou ao limite de tentativas, tente novamente em alguns instantes.",
-        };
+        if (statusCode == 422 && error.response.data.mensagem) {
+          erro = {
+            error: `Chegou ao limite de tentativas, tente novamente em alguns instantes. ${error.response.data.mensagem}`,
+          };
+        }
         return erro;
       }
 
@@ -112,6 +117,8 @@ async function baixarBoleto(
       },
       httpsAgent,
     });
+
+    console.log("Response: ", response);
 
     return response.data;
   } catch (err) {

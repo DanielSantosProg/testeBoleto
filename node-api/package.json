@@ -10,6 +10,7 @@
     "gerar-boletos-dados": "node requests/gerarBoletos.js",
     "consultar-boleto": "node requests/consultarBoleto.js",
     "baixar-boleto": "node requests/baixarBoleto.js",
+    "alterar-boleto": "node requests/alterarBoleto.js",
     "i-service": "node windowsService.js",
     "u-service": "node windowsServiceUninstall.js"
   },

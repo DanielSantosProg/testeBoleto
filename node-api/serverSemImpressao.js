@@ -5,7 +5,7 @@ const {
   consultarBoletoComRetry,
 } = require("./services/consultarBoletoService");
 const { baixarBoletoComRetry } = require("./services/baixarBoletoService");
-const alterarBoleto = require("./services/alterarBoletoService");
+const { alterarBoletoComRetry } = require("./services/alterarBoletoService");
 // const consultarBoletosPendentes = require("./services/consultarBoletosPendentesService");
 // const consultarBoletosLiquidados = require("./services/consultarBoletosLiquidadosService");
 
@@ -132,17 +132,18 @@ async function processarBoleto(id, pool) {
         .input("parcela", sql.Int, data.parcela || 1)
         .input("pixQrCode", sql.VarChar(500), pixQrCodeValue)
         .input("numBoleto", sql.Int, dados_bradesco_api.snumero10)
+        .input("idTransacao", sql.VarChar(50), dados_bradesco_api.iconcPgtoSpi)
         .input("statusBol", sql.Int, dados_bradesco_api.codStatus10).query(`
         INSERT INTO COR_BOLETO_BANCARIO (
           DATA_VENC, N_DOC, DATA_PROCESS, VALOR, LINHA_DIGITAVEL, CODIGO_BARRA,
           NOSSO_NUMERO, ID_DUPLICATA, ANO_BOLETO, ID_CONTA_CORRENTE, ATIVO,
           SELECIONADO, DATA_CADASTRO, ID_USU_CADASTRO, ID_CLIENTE, IDEMPRESA,
-          PARCELA, PIX_QRCODE, STATUS_BOL, N_BOLETO
+          PARCELA, PIX_QRCODE, STATUS_BOL, N_BOLETO, ID_TRANSACAO
         ) VALUES (
           @dataVenc, @nDoc, @dataProcess, @valor, @linhaDigitavel, @codigoBarra,
           @nossoNumero, @idDuplicata, @anoBoleto, @idContaCorrente, @ativo,
           @selecionado, @dataCadastro, @idUsuCadastro, @idCliente, @idEmpresa,
-          @parcela, @pixQrCode, @statusBol, @numBoleto
+          @parcela, @pixQrCode, @statusBol, @numBoleto, @idTransacao
         )
       `);
 
@@ -233,9 +234,7 @@ async function processarBoletoComRetry(id, pool, maxTentativas = 3) {
       if (tentativa === maxTentativas) {
         console.log(`Tentativa ${tentativa} - msgErro: ${msgErro}`);
 
-        if (
-          msgErro.includes("Erro na requisição para a API do Bradesco: 422")
-        ) {
+        if (msgErro.includes("422")) {
           return {
             id,
             error:
@@ -582,6 +581,20 @@ function formatDate(data) {
   return `${dia}${mes}${ano}`;
 }
 
+function formatDateToYYYYMMDD(date) {
+  const yyyy = date.getUTCFullYear();
+  let mm = (date.getUTCMonth() + 1).toString().padStart(2, "0");
+  let dd = date.getUTCDate().toString().padStart(2, "0");
+  return `${yyyy}${mm}${dd}`;
+}
+
+function parsetoDate(str) {
+  const year = parseInt(str.substr(0, 4));
+  const month = parseInt(str.substr(4, 2)) - 1;
+  const day = parseInt(str.substr(6, 2));
+  return new Date(year, month, day);
+}
+
 app.post("/baixar_boleto", async (req, res) => {
   const { id } = req.body;
   if (!id) {
@@ -809,6 +822,7 @@ app.post("/alterar_boleto", async (req, res) => {
       D.COR_DUP_CLIENTE AS idCliente,
       D.COR_DUP_IDEMPRESA AS idEmpresa,
       D.COR_DUP_USU_CADASTROU AS usuCadastro,
+      D.COR_DUP_DATA_PRORROGACAO AS dataProrrogacao,
       B.CLIENTID AS clientId,
       B.CLIENTSECRET AS clientSecret,
       B.CAMINHO_CRT AS caminhoCrt,
@@ -827,6 +841,7 @@ app.post("/alterar_boleto", async (req, res) => {
       BB.LINHA_DIGITAVEL,
       BB.CODIGO_BARRA,
       BB.NOSSO_NUMERO AS nossoNumero,
+      BB.ID_TRANSACAO AS txId,
       E.GER_EMP_C_N_P_J_ AS cpfCnpjEmpresa
     FROM COR_CADASTRO_DE_DUPLICATAS D
     INNER JOIN API_PIX_CADASTRO_DE_CONTA B ON D.COR_CLI_BANCO = B.API_PIX_ID
@@ -844,14 +859,17 @@ app.post("/alterar_boleto", async (req, res) => {
     let controleInt = parseInt(data.cpfCnpjEmpresa.slice(-2));
     let agencia = data.agencia ? String(data.agencia).substring(0, 4) : "0000";
     let conta = data.conta ? String(data.conta).substring(0, 7) : "0000000";
-    const isCpf = data.cpfCnpjEmpresa.length == 11 ? true : false;
+    const isCpf = data.cpfCnpjEmpresa.length == 11;
     if (!isCpf) {
       filialint = parseInt(data.cpfCnpjEmpresa.substring(9, 12));
     }
 
     const negociacaoString = parseInt(String(agencia + conta));
 
-    const valorvar = parseInt(dupValor * 100);
+    const valorvar = 1000;
+    const dataProrrogacao = data.dataProrrogacao
+      ? formatDate(String(data.dataProrrogacao))
+      : 0;
 
     const payload = {
       codUsuario: "OPENAPI",
@@ -869,17 +887,15 @@ app.post("/alterar_boleto", async (req, res) => {
         dataEmissao: data.dataEmissao
           ? parseInt(formatDate(data.dataEmissao))
           : 0,
-        especie: String(dupTipoMap[data.dupTipo]) || "99",
-        dataVencimento: data.dataVencimento
-          ? parseInt(formatDate(data.dataVencimento))
-          : 0,
+        especie: (dupTipoMap[data.dupTipo] || "99").toString(),
+        dataVencimento: dataProrrogacao,
         codVencimento: 0,
         codInstrucaoProtesto: 0,
         diasProtesto: 0,
         codDecurso: 0,
         diasDecurso: 0,
         codAbatimento: 1,
-        valorAbatimentoTitulo: 190,
+        valorAbatimentoTitulo: 0,
         dataPrimeiroDesc: 0,
         valorPrimeiroDesc: 0,
         codPrimeiroDesc: 0,
@@ -892,7 +908,7 @@ app.post("/alterar_boleto", async (req, res) => {
         valorTerceiroDesc: 0,
         codTerceiroDesc: 0,
         acaoTerceiroDesc: 0,
-        controleParticipante: "146738343034214732",
+        controleParticipante: "11111111111111111",
         idAvisoSacado: "S",
         diasAposVencidoJuros: 0,
         valorJuros: 0,
@@ -915,18 +931,60 @@ app.post("/alterar_boleto", async (req, res) => {
       },
     };
 
-    const resultado = await alterarBoleto(
+    const resultado = await alterarBoletoComRetry(
+      id,
       payload,
       data.caminhoCrt,
       data.senhaCrt,
       data.clientId,
-      data.clientSecret
+      data.clientSecret,
+      data.txId
     );
 
-    res.json({ resultado });
+    if (!resultado || resultado.error) {
+      throw new Error(
+        resultado
+          ? resultado.error
+          : "Não foi possível fazer a alteração no boleto."
+      );
+    }
+
+    if (resultado && resultado.codigo && resultado.codigo != "CBTT0445") {
+      return res.json({
+        duplicata: id,
+        error: resultado?.mensagem ? resultado.mensagem : null,
+        status: 0,
+        resultado: resultado,
+      });
+    } else {
+      // Atualiza a COR_CADASTRO_DE_DUPLICATAS com nova data de vencimento
+      console.log("Data Prorrogacao: ", data.dataProrrogacao);
+      let dataProrrogacao_yyyymmdd = formatDateToYYYYMMDD(data.dataProrrogacao);
+      let dataProrrogacaoDate = parsetoDate(dataProrrogacao_yyyymmdd);
+      console.log("DAta final: ", dataProrrogacaoDate);
+
+      const request = new sql.Request();
+      await request
+        .input("dataVencimento", sql.Date, dataProrrogacaoDate)
+        .input("id", sql.Int, id).query(`
+          UPDATE COR_CADASTRO_DE_DUPLICATAS SET COR_DUP_DATA_VENCIMENTO = @dataVencimento WHERE COR_DUP_ID = @id
+        `);
+    }
+
+    return res.json({
+      duplicata: id,
+      error: null,
+      status: 1,
+      resultado: resultado,
+    });
   } catch (error) {
     console.error("Erro geral ao alterar boleto:", error);
-    res.status(500).json({ error: error.message });
+    res.json({
+      duplicata: id,
+      error: error.message,
+      status: 0,
+      resultado: error,
+    });
   } finally {
     if (pool) await pool.close();
   }
