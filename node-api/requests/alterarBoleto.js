@@ -12,10 +12,6 @@ async function alteracao(id) {
       { responseType: "json" }
     );
 
-    if (response.data.error) {
-      throw new Error(response.data.error);
-    }
-
     const duplicata = response.data.duplicata;
     const status = response.data.status;
     const resultFull = response.data.resultado;
@@ -23,6 +19,7 @@ async function alteracao(id) {
     console.log(`Boleto da duplicata de ID ${duplicata} encontrado.`);
     console.log("Status: ", status);
     console.log("Resultado Completo: ", resultFull);
+    console.log("Erro: ", response.data.error);
   } catch (error) {
     if (error.response) {
       console.error("Erro na API:", error.response.status);

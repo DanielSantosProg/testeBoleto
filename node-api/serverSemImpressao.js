@@ -132,7 +132,11 @@ async function processarBoleto(id, pool) {
         .input("parcela", sql.Int, data.parcela || 1)
         .input("pixQrCode", sql.VarChar(500), pixQrCodeValue)
         .input("numBoleto", sql.Int, dados_bradesco_api.snumero10)
-        .input("idTransacao", sql.VarChar(50), dados_bradesco_api.iconcPgtoSpi)
+        .input(
+          "idTransacao",
+          sql.VarChar(50),
+          "20241122237093995007555702570068544" // Alterar depois para dados_bradesco_api.iconcPgtoSpi, em sandbox não funciona o retorno do bradesco
+        )
         .input("statusBol", sql.Int, dados_bradesco_api.codStatus10).query(`
         INSERT INTO COR_BOLETO_BANCARIO (
           DATA_VENC, N_DOC, DATA_PROCESS, VALOR, LINHA_DIGITAVEL, CODIGO_BARRA,
@@ -958,10 +962,8 @@ app.post("/alterar_boleto", async (req, res) => {
       });
     } else {
       // Atualiza a COR_CADASTRO_DE_DUPLICATAS com nova data de vencimento
-      console.log("Data Prorrogacao: ", data.dataProrrogacao);
       let dataProrrogacao_yyyymmdd = formatDateToYYYYMMDD(data.dataProrrogacao);
       let dataProrrogacaoDate = parsetoDate(dataProrrogacao_yyyymmdd);
-      console.log("DAta final: ", dataProrrogacaoDate);
 
       const request = new sql.Request();
       await request
@@ -978,10 +980,14 @@ app.post("/alterar_boleto", async (req, res) => {
       resultado: resultado,
     });
   } catch (error) {
-    console.error("Erro geral ao alterar boleto:", error);
+    let mensagemErro = error?.message;
+    if (error.response?.data?.mensagem) {
+      mensagemErro = error.response.data.mensagem;
+    }
+    console.error("Erro geral ao alterar boleto:", mensagemErro);
     res.json({
       duplicata: id,
-      error: error.message,
+      error: mensagemErro,
       status: 0,
       resultado: error,
     });

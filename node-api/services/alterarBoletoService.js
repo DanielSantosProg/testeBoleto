@@ -37,6 +37,10 @@ async function alterarBoletoComRetry(
     } catch (error) {
       const msgErro = error.message || "";
       const statusCode = error.response ? error.response.status : null;
+      const mensagem =
+        error.response?.data?.mensagem ||
+        error.response?.data?.descricaoErro ||
+        msgErro;
 
       const deveTentarNovamente =
         statusCode === 504 ||
@@ -46,7 +50,7 @@ async function alterarBoletoComRetry(
         if (error.response?.data?.descricaoErro) {
           return { error: error.response.data.descricaoErro };
         }
-        return { error: msgErro };
+        return { error: mensagem };
       }
 
       console.warn(
@@ -110,8 +114,10 @@ async function alterarBoleto(
 
     return response.data;
   } catch (err) {
-    console.error("Erro ao fazer alteração do boleto: ", err);
-    throw err;
+    let mensagem = err?.response?.data?.mensagem || err.message;
+    console.error("Erro ao fazer alteração do boleto: ", mensagem);
+    const erroCompleto = new Error(mensagem);
+    throw erroCompleto;
   }
 }
 
