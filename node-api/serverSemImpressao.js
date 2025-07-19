@@ -106,6 +106,11 @@ async function processarBoleto(id, pool) {
       ).substring(0, 500);
       const codBarrasValue = cod_barras || "0";
 
+      const txid =
+        process.env.DB_AMBIENTE == 1
+          ? "20241122237093995007555702570068544"
+          : dados_bradesco_api.iconcPgtoSpi;
+
       // Insere um registro em COR_BOLETO_BANCARIO com os dados do boleto
       const request2 = new sql.Request(transaction);
       await request2
@@ -132,11 +137,7 @@ async function processarBoleto(id, pool) {
         .input("parcela", sql.Int, data.parcela || 1)
         .input("pixQrCode", sql.VarChar(500), pixQrCodeValue)
         .input("numBoleto", sql.Int, dados_bradesco_api.snumero10)
-        .input(
-          "idTransacao",
-          sql.VarChar(50),
-          "20241122237093995007555702570068544" // Alterar depois para dados_bradesco_api.iconcPgtoSpi, em sandbox não funciona o retorno do bradesco
-        )
+        .input("idTransacao", sql.VarChar(50), txid)
         .input("statusBol", sql.Int, dados_bradesco_api.codStatus10).query(`
         INSERT INTO COR_BOLETO_BANCARIO (
           DATA_VENC, N_DOC, DATA_PROCESS, VALOR, LINHA_DIGITAVEL, CODIGO_BARRA,
@@ -237,15 +238,6 @@ async function processarBoletoComRetry(id, pool, maxTentativas = 3) {
 
       if (tentativa === maxTentativas) {
         console.log(`Tentativa ${tentativa} - msgErro: ${msgErro}`);
-
-        if (msgErro.includes("422")) {
-          return {
-            id,
-            error:
-              "Bradesco não conseguiu gerar o boleto com os dados informados.",
-            status: 0,
-          };
-        }
         return {
           id,
           error: msgErro,

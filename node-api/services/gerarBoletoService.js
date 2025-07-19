@@ -380,15 +380,19 @@ async function requisicaoBradesco(
   } catch (error) {
     if (error.response) {
       const status = error.response.status;
-      const data = error.response.data;
+      const data = error.response.data.errorMessage
+        ? error.response.data.errorMessage
+        : error.response.data;
 
       console.error("Erro na API:", status);
-      console.error(data);
+      console.error(data.mensagem ?? "Nenhum mensagem de erro retornada");
 
       // Retorna uma mensagem detalhada para o retry identificar
       return {
         error: `Erro na requisição para a API do Bradesco: ${status} - ${
-          typeof data === "string" ? data : JSON.stringify(data)
+          typeof data === "string"
+            ? data.mensagem ?? data.substring(0, 200) + "..."
+            : JSON.stringify(data.mensagem ?? data)
         }`,
       };
     } else {
