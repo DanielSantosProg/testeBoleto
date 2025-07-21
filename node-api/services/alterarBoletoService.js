@@ -4,6 +4,8 @@ const path = require("path");
 const axios = require("axios");
 const getToken = require("../gerarToken");
 
+require("dotenv").config();
+
 async function alterarBoletoComRetry(
   id,
   payload,
@@ -44,7 +46,8 @@ async function alterarBoletoComRetry(
 
       const deveTentarNovamente =
         statusCode === 504 ||
-        (statusCode === 422 && !error.response?.data?.descricaoErro);
+        (statusCode === 422 && !error.response?.data?.descricaoErro) ||
+        !statusCode;
 
       if (!deveTentarNovamente) {
         if (error.response?.data?.descricaoErro) {
