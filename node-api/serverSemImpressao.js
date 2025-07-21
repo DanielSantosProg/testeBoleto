@@ -961,7 +961,7 @@ app.post("/alterar_boleto", async (req, res) => {
       await request
         .input("dataVencimento", sql.Date, dataProrrogacaoDate)
         .input("id", sql.Int, id).query(`
-          UPDATE COR_CADASTRO_DE_DUPLICATAS SET COR_DUP_DATA_VENCIMENTO = @dataVencimento WHERE COR_DUP_ID = @id
+          UPDATE COR_BOLETO_BANCARIO SET DATA_VENC = @dataVencimento WHERE ID_DUPLICATA = @id
         `);
     }
 
