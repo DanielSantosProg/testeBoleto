@@ -90,11 +90,6 @@ async function alterarBoleto(
         ? "https://openapisandbox.prebanco.com.br/boleto-hibrido/cobranca-alteracao/v1/alteraBoletoConsulta"
         : "https://openapi.bradesco.com.br/boleto/cobranca-altera/v1/alterar";
 
-    const idTransacao =
-      process.env.DB_AMBIENTE == 1
-        ? "20241122237093995007555702570068544"
-        : TXID;
-
     const token = await getToken(
       CAMINHO_CRT,
       SENHA_CRT,
@@ -102,6 +97,11 @@ async function alterarBoleto(
       CLIENTSECRET
     );
     if (!token) throw new Error("Erro ao obter token");
+
+    const idTransacao =
+      process.env.DB_AMBIENTE == 1
+        ? "20241122237093995007555702570068544"
+        : TXID;
 
     const httpsAgent = new https.Agent({
       pfx: fs.readFileSync(path.resolve(CAMINHO_CRT)),
