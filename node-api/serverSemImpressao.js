@@ -26,6 +26,11 @@ const app = express();
 app.use(express.json({ limit: "10mb" }));
 app.use("/boletos", express.static(path.join(__dirname, "boletos")));
 
+app.get("/", async (req, res) => {
+  let resposta = `API rodando na Porta ${process.env.SRV_PORT ?? 3000}`;
+  return res.send(resposta);
+});
+
 // Função para processar um boleto individualmente
 async function processarBoleto(id, pool) {
   let transaction;
