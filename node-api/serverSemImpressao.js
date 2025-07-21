@@ -844,10 +844,14 @@ app.post("/alterar_boleto", async (req, res) => {
     INNER JOIN API_BOLETO_CAD_CONVENIO CO With (NoLock) ON CO.IDCONTA = B.API_PIX_ID
     INNER JOIN GER_EMPRESA E With (NoLock) ON E.GER_EMP_ID = D.COR_DUP_IDEMPRESA
     LEFT JOIN COR_BOLETO_BANCARIO BB With (NoLock) ON BB.ID_DUPLICATA = D.COR_DUP_ID
-    WHERE D.COR_DUP_ID = @id;
+    WHERE BB.ID_DUPLICATA = @id;
     `);
 
     const data = dadosDup.recordset[0];
+
+    if (!data) {
+      throw new Error("Não existe o boleto informado.");
+    }
 
     // Formata os campos para inserir no payload
     const cpfCnpjString = parseInt(data.cpfCnpjEmpresa.substring(0, 9));
