@@ -19,7 +19,7 @@ async function fetchDbData(id, pool) {
       SELECT D.COR_DUP_ID AS duplicataId, D.COR_DUP_DOCUMENTO AS dupDocumento,
              D.COR_DUP_DATA_EMISSAO AS dataEmissao, D.COR_DUP_DATA_VENCIMENTO AS dataVencimento,
              D.COR_DUP_VALOR_DUPLICATA AS dupValor, D.COR_DUP_TIPO AS dupTipo,
-             C.COR_CLI_NOME AS clienteNome, C.COR_CLI_CNPJ_CPF AS cnpjCpfCliente,
+             RTRIM(C.COR_CLI_NOME) AS clienteNome, C.COR_CLI_CNPJ_CPF AS cnpjCpfCliente,
              B.AGENCIA AS agencia, B.CONTA AS conta, B.CODBANCO AS codBanco,
              CO.NOSSONUMERO AS nossoNumero, CO.NUMCONTRATO as numContrato,
              CO.CARTEIRA AS carteira, CO.PROTESTO AS protesto, CO.DIASPROTESTO AS diasProtesto,
