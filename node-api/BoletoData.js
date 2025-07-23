@@ -26,11 +26,11 @@ async function fetchDbData(id, pool) {
              CO.LIMITE_RECEB_DIAS AS diasDecurso, CO.JUROS_DIA AS juros, CO.MODALIDADE_JUROS as modalidadeJuros,
              CO.MULTA as multa, CO.TIPO_MULTA AS tipoMulta, CO.DIAS_MULTA AS diasMulta,
              E.GER_EMP_C_N_P_J_ AS empresaCnpj,
-             CN.COR_CON_NUMERO_ENDERECO AS numeroEnderecoContato,
-             CN.COR_CON_ENDERECO AS enderecoContato, CN.COR_CON_COMPLEMENTO_ENDERECO AS complementoContato,
-             CN.COR_CON_BAIRRO AS bairroContato, CN.COR_CON_CEP AS cepContato,
-             CN.COR_CON_EMAIL AS emailContato, CN.COR_CON_TELEFONE AS telefoneContato,
-             M.GER_MUN_DESCRICAO AS municipio, ES.GER_EST_UF AS uf
+             RTRIM(CN.COR_CON_NUMERO_ENDERECO) AS numeroEnderecoContato,
+             RTRIM(CN.COR_CON_ENDERECO) AS enderecoContato, RTRIM(CN.COR_CON_COMPLEMENTO_ENDERECO) AS complementoContato,
+             RTRIM(CN.COR_CON_BAIRRO) AS bairroContato, RTRIM(CN.COR_CON_CEP) AS cepContato,
+             RTRIM(CN.COR_CON_EMAIL) AS emailContato, RTRIM(CN.COR_CON_TELEFONE) AS telefoneContato,
+             RTRIM(M.GER_MUN_DESCRICAO) AS municipio, ES.GER_EST_UF AS uf
       FROM COR_CADASTRO_DE_DUPLICATAS D
       INNER JOIN COR_CLIENTE C ON D.COR_DUP_CLIENTE = C.COR_CLI_ID
       INNER JOIN API_PIX_CADASTRO_DE_CONTA B ON D.COR_CLI_BANCO = B.API_PIX_ID
@@ -115,7 +115,7 @@ async function fetchDbData(id, pool) {
     } = newData;
 
     const payload = {
-      ctitloCobrCdent: String(nossoNumero ?? "0"),
+      ctitloCobrCdent: String(nossoNumero ?? "0").padStart(11, "0"),
       registrarTitulo: "1",
       qtdDecurPrz: String(diasDecurso ?? "0"),
       codUsuario: "APISERVIC",
