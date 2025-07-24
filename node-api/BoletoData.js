@@ -127,7 +127,9 @@ async function fetchDbData(id, pool) {
       ctpoContrNegoc: "000",
       nseqContrNegoc: String(numContrato ?? "0"),
       cidtfdProdCobr: String(carteira ?? "0"),
-      cnegocCobr: String((agencia ?? "") + "000000000" + (conta ?? "")),
+      cnegocCobr: String(
+        (agencia ?? "") + String(conta ?? "").padStart(14, "0")
+      ),
       codigoBanco: String(codBanco ?? "237"),
       filler: "",
       eNseqContrNegoc: String(numContrato ?? "0"),
