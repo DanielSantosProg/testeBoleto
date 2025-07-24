@@ -18,19 +18,19 @@ async function fetchDbData(id, pool) {
       )
       SELECT D.COR_DUP_ID AS duplicataId, D.COR_DUP_DOCUMENTO AS dupDocumento,
              D.COR_DUP_DATA_EMISSAO AS dataEmissao, D.COR_DUP_DATA_VENCIMENTO AS dataVencimento,
-             D.COR_DUP_VALOR_DUPLICATA AS dupValor, D.COR_DUP_TIPO AS dupTipo,
-             RTRIM(C.COR_CLI_NOME) AS clienteNome, C.COR_CLI_CNPJ_CPF AS cnpjCpfCliente,
-             B.AGENCIA AS agencia, B.CONTA AS conta, B.CODBANCO AS codBanco,
-             CO.NOSSONUMERO AS nossoNumero, CO.NUMCONTRATO as numContrato,
-             CO.CARTEIRA AS carteira, CO.PROTESTO AS protesto, CO.DIASPROTESTO AS diasProtesto,
-             CO.LIMITE_RECEB_DIAS AS diasDecurso, CO.JUROS_DIA AS juros, CO.MODALIDADE_JUROS as modalidadeJuros,
-             CO.MULTA as multa, CO.TIPO_MULTA AS tipoMulta, CO.DIAS_MULTA AS diasMulta,
-             E.GER_EMP_C_N_P_J_ AS empresaCnpj,
+             D.COR_DUP_VALOR_DUPLICATA AS dupValor, RTRIM(D.COR_DUP_TIPO) AS dupTipo,
+             RTRIM(C.COR_CLI_NOME) AS clienteNome, RTRIM(C.COR_CLI_CNPJ_CPF) AS cnpjCpfCliente,
+             RTRIM(B.AGENCIA) AS agencia, RTRIM(B.CONTA) AS conta, RTRIM(B.CODBANCO) AS codBanco,
+             CO.NOSSONUMERO AS nossoNumero, RTRIM(CO.NUMCONTRATO) as numContrato,
+             RTRIM(CO.CARTEIRA) AS carteira, (CO.PROTESTO) AS protesto, (CO.DIASPROTESTO) AS diasProtesto,
+             CO.LIMITE_RECEB_DIAS AS diasDecurso, CO.JUROS_DIA AS juros, RTRIM(CO.MODALIDADE_JUROS) as modalidadeJuros,
+             CO.MULTA as multa, RTRIM(CO.TIPO_MULTA) AS tipoMulta, CO.DIAS_MULTA AS diasMulta,
+             RTRIM(E.GER_EMP_C_N_P_J_) AS empresaCnpj,
              RTRIM(CN.COR_CON_NUMERO_ENDERECO) AS numeroEnderecoContato,
              RTRIM(CN.COR_CON_ENDERECO) AS enderecoContato, RTRIM(CN.COR_CON_COMPLEMENTO_ENDERECO) AS complementoContato,
              RTRIM(CN.COR_CON_BAIRRO) AS bairroContato, RTRIM(CN.COR_CON_CEP) AS cepContato,
              RTRIM(CN.COR_CON_EMAIL) AS emailContato, RTRIM(CN.COR_CON_TELEFONE) AS telefoneContato,
-             RTRIM(M.GER_MUN_DESCRICAO) AS municipio, ES.GER_EST_UF AS uf
+             RTRIM(M.GER_MUN_DESCRICAO) AS municipio, RTRIM(ES.GER_EST_UF) AS uf
       FROM COR_CADASTRO_DE_DUPLICATAS D
       INNER JOIN COR_CLIENTE C ON D.COR_DUP_CLIENTE = C.COR_CLI_ID
       INNER JOIN API_PIX_CADASTRO_DE_CONTA B ON D.COR_CLI_BANCO = B.API_PIX_ID
@@ -128,7 +128,7 @@ async function fetchDbData(id, pool) {
       nseqContrNegoc: String(numContrato ?? "0"),
       cidtfdProdCobr: String(carteira ?? "0"),
       cnegocCobr: String(
-        (agencia ?? "") + String(conta ?? "").padStart(14, "0")
+        String(agencia ?? "") + String(conta ?? "").padStart(14, "0")
       ),
       codigoBanco: String(codBanco ?? "237"),
       filler: "",
@@ -142,22 +142,22 @@ async function fetchDbData(id, pool) {
       cindcdEconmMoeda: "00006",
       vnmnalTitloCobr: String(parseInt(dupValor * 100)),
       qmoedaNegocTitlo: "0",
-      cespceTitloCobr: dupTipoMap[dupTipo] || "00",
+      cespceTitloCobr: dupTipoMap[dupTipo] || "99",
       cindcdAceitSacdo: "N",
-      ctpoProteTitlo: protesto ? "2" : "00",
-      ctpoPrzProte: protesto ? diasProtesto : "00",
-      ctpoProteDecurs: protesto ? "2" : "00",
+      ctpoProteTitlo: protesto ? "2" : "0",
+      ctpoPrzProte: protesto ? diasProtesto : "0",
+      ctpoProteDecurs: protesto ? "2" : "0",
       ctpoPrzDecurs: "0",
-      cctrlPartcTitlo: "0000000000000000000000000",
+      cctrlPartcTitlo: "0",
       cformaEmisPplta: "02",
       cindcdPgtoParcial: "N",
-      qtdePgtoParcial: "000",
+      qtdePgtoParcial: "0",
       filler1: "",
       ptxJuroVcto:
         modalidadeJuros === "P" ? Number(juros ?? 0).toFixed(5) : "0",
       vdiaJuroMora:
         modalidadeJuros === "V"
-          ? String(Math.Round((juros ?? 0) * 100)).padStart(3, "0")
+          ? String(Math.round((juros ?? 0) * 100)).padStart(3, "0")
           : "0",
       qdiaInicJuro: "01",
       pmultaAplicVcto: tipoMulta === "P" ? Number(multa ?? 0).toFixed(5) : "0",
@@ -177,9 +177,9 @@ async function fetchDbData(id, pool) {
       dlimDescBonif3: "",
       ctpoPrzCobr: "0",
       pdescBonifPgto: "0",
-      vdescBonifPgto: "0000",
+      vdescBonifPgto: "0",
       dlimBonifPgto: "",
-      vabtmtTitloCobr: "00000000000000000",
+      vabtmtTitloCobr: "0",
       viofPgtoTitlo: "0",
       filler2: "",
       isacdoTitloCobr: String(clienteNome ?? ""),

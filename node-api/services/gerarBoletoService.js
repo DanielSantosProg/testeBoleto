@@ -9,13 +9,10 @@ const path = require("path");
 // Requere o arquivo.env para a conexão com o banco de dados
 require("dotenv").config();
 
-let API_URL;
-
-process.env.DB_AMBIENTE == 1
-  ? (API_URL =
-      "https://openapisandbox.prebanco.com.br/boleto-hibrido/cobranca-registro/v1/gerarBoleto")
-  : (API_URL =
-      "https://openapi.bradesco.com.br/boleto-hibrido/cobranca-registro/v1/gerarBoleto");
+const API_URL =
+  process.env.DB_AMBIENTE == 2
+    ? "https://openapi.bradesco.com.br/boleto-hibrido/cobranca-registro/v1/gerarBoleto"
+    : "https://openapisandbox.prebanco.com.br/boleto-hibrido/cobranca-registro/v1/gerarBoleto";
 
 async function sendRequest(token, payload, CAMINHO_CRT, SENHA_CRT) {
   const agent = new https.Agent({

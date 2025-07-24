@@ -89,12 +89,10 @@ async function baixarBoleto(
   CLIENTSECRET
 ) {
   try {
-    let url;
-    process.env.DB_AMBIENTE == 1
-      ? (url =
-          "https://openapisandbox.prebanco.com.br/boleto/cobranca-baixa/v1/baixar")
-      : (url =
-          "https://openapi.bradesco.com.br/boleto/cobranca-baixa/v1/baixar");
+    const url =
+      process.env.DB_AMBIENTE == 2
+        ? "https://openapi.bradesco.com.br/boleto/cobranca-baixa/v1/baixar"
+        : "https://openapisandbox.prebanco.com.br/boleto/cobranca-baixa/v1/baixar";
 
     //Busca o token para fazer a operação de consulta
     const token = await getToken(

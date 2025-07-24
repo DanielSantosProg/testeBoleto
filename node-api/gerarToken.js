@@ -25,9 +25,9 @@ async function gerarNovoToken(CAMINHO_CRT, SENHA_CRT, CLIENTID, CLIENTSECRET) {
     params.append("client_id", CLIENTID);
     params.append("client_secret", CLIENTSECRET);
     const url =
-      process.env.DB_AMBIENTE == 1
-        ? "https://openapisandbox.prebanco.com.br/auth/server-mtls/v2/token"
-        : "https://openapi.bradesco.com.br/auth/server-mtls/v2/token";
+      process.env.DB_AMBIENTE == 2
+        ? "https://openapi.bradesco.com.br/auth/server-mtls/v2/token"
+        : "https://openapisandbox.prebanco.com.br/auth/server-mtls/v2/token";
 
     const response = await axios.post(url, params, {
       headers: {

@@ -10,9 +10,9 @@ const { alterarBoletoComRetry } = require("./services/alterarBoletoService");
 // const consultarBoletosLiquidados = require("./services/consultarBoletosLiquidadosService");
 
 let fetchDbData;
-process.env.DB_AMBIENTE == 1
-  ? (fetchDbData = require("./BoletoDataSandbox"))
-  : (fetchDbData = require("./BoletoData"));
+process.env.DB_AMBIENTE == 2
+  ? (fetchDbData = require("./BoletoData"))
+  : (fetchDbData = require("./BoletoDataSandbox"));
 
 // Importa dependências do Node
 const sql = require("mssql");
@@ -46,7 +46,7 @@ async function processarBoleto(id, pool) {
         D.COR_DUP_ID AS duplicataId,
         D.COR_CLI_BANCO AS codBanco,
         D.COR_DUP_VALOR_DUPLICATA AS dupValor,
-        D.COR_DUP_TIPO AS dupTipo,
+        RTRIM(D.COR_DUP_TIPO) AS dupTipo,
         D.COR_DUP_DATA_EMISSAO AS dataEmissao,
         D.COR_DUP_DATA_VENCIMENTO AS dataVencimento,
         D.COR_DUP_DOCUMENTO AS numeroDocumento,
@@ -54,17 +54,16 @@ async function processarBoleto(id, pool) {
         D.COR_DUP_CLIENTE AS idCliente,
         D.COR_DUP_IDEMPRESA AS idEmpresa,
         D.COR_DUP_USU_CADASTROU AS usuCadastro,
-        B.CLIENTID AS clientId,
-        B.CLIENTSECRET AS clientSecret,
-        B.CAMINHO_CRT AS caminhoCrt,
+        RTRIM(B.CLIENTID) AS clientId,
+        RTRIM(B.CLIENTSECRET) AS clientSecret,
+        RTRIM(B.CAMINHO_CRT) AS caminhoCrt,
         B.SENHA_CRT AS senhaCrt,
         B.API_PIX_ID AS idConta,
-        B.DVCONTA AS digConta,
-        B.DVAGENCIA AS digAgencia        
+        RTRIM(B.DVCONTA) AS digConta,
+        RTRIM(B.DVAGENCIA) AS digAgencia        
       FROM COR_CADASTRO_DE_DUPLICATAS D With (NoLock)
       INNER JOIN API_PIX_CADASTRO_DE_CONTA B With (NoLock) ON D.COR_CLI_BANCO = B.API_PIX_ID
       INNER JOIN API_BOLETO_CAD_CONVENIO CO With (NoLock) ON CO.IDCONTA = B.API_PIX_ID
-      LEFT JOIN COR_BOLETO_BANCARIO BB With (NoLock) ON BB.ID_DUPLICATA = D.COR_DUP_ID
       WHERE D.COR_DUP_ID = @id;
     `);
 
@@ -112,9 +111,9 @@ async function processarBoleto(id, pool) {
       const codBarrasValue = cod_barras || "0";
 
       const txid =
-        process.env.DB_AMBIENTE == 1
-          ? "20241122237093995007555702570068544"
-          : dados_bradesco_api.iconcPgtoSpi;
+        process.env.DB_AMBIENTE == 2
+          ? dados_bradesco_api.iconcPgtoSpi
+          : "20241122237093995007555702570068544";
 
       // Insere um registro em COR_BOLETO_BANCARIO com os dados do boleto
       const request2 = new sql.Request(transaction);
@@ -433,7 +432,7 @@ app.post("/consulta_boleto", async (req, res) => {
       D.COR_DUP_ID AS duplicataId,
       D.COR_CLI_BANCO AS codBanco,
       D.COR_DUP_VALOR_DUPLICATA AS dupValor,
-      D.COR_DUP_TIPO AS dupTipo,
+      RTRIM(D.COR_DUP_TIPO) AS dupTipo,
       D.COR_DUP_DATA_EMISSAO AS dataEmissao,
       D.COR_DUP_DATA_VENCIMENTO AS dataVencimento,
       D.COR_DUP_DOCUMENTO AS numeroDocumento,
@@ -441,18 +440,18 @@ app.post("/consulta_boleto", async (req, res) => {
       D.COR_DUP_CLIENTE AS idCliente,
       D.COR_DUP_IDEMPRESA AS idEmpresa,
       D.COR_DUP_USU_CADASTROU AS usuCadastro,
-      B.CLIENTID AS clientId,
-      B.CLIENTSECRET AS clientSecret,
-      B.CAMINHO_CRT AS caminhoCrt,
+      RTRIM(B.CLIENTID) AS clientId,
+      RTRIM(B.CLIENTSECRET) AS clientSecret,
+      RTRIM(B.CAMINHO_CRT) AS caminhoCrt,
       B.SENHA_CRT AS senhaCrt,
       B.API_PIX_ID AS idConta,
-      B.CONTA AS conta,
-      B.AGENCIA AS agencia,
-      CO.CARTEIRA AS carteira,
+      RTRIM(B.CONTA) AS conta,
+      RTRIM(B.AGENCIA) AS agencia,
+      RTRIM(CO.CARTEIRA) AS carteira,
       BB.STATUS_BOL AS status,
       BB.ID_BOLETO AS idBoleto,
-      BB.NOSSO_NUMERO AS nossoNumero,
-      E.GER_EMP_C_N_P_J_ AS cpfCnpjEmpresa
+      RTRIM(BB.NOSSO_NUMERO) AS nossoNumero,
+      RTRIM(E.GER_EMP_C_N_P_J_) AS cpfCnpjEmpresa
     FROM COR_CADASTRO_DE_DUPLICATAS D With (NoLock)
     INNER JOIN API_PIX_CADASTRO_DE_CONTA B With (NoLock) ON D.COR_CLI_BANCO = B.API_PIX_ID
     INNER JOIN API_BOLETO_CAD_CONVENIO CO With (NoLock) ON CO.IDCONTA = B.API_PIX_ID
@@ -627,18 +626,18 @@ app.post("/baixar_boleto", async (req, res) => {
       SELECT
       D.COR_DUP_ID AS duplicataId,
       D.COR_DUP_IDEMPRESA AS idEmpresa,
-      B.CLIENTID AS clientId,
-      B.CLIENTSECRET AS clientSecret,
-      B.CAMINHO_CRT AS caminhoCrt,
+      RTRIM(B.CLIENTID) AS clientId,
+      RTRIM(B.CLIENTSECRET) AS clientSecret,
+      RTRIM(B.CAMINHO_CRT) AS caminhoCrt,
       B.SENHA_CRT AS senhaCrt,
       B.API_PIX_ID AS idConta,
-      B.CONTA AS conta,
-      B.AGENCIA AS agencia,
-      CO.CARTEIRA AS carteira,
+      RTRIM(B.CONTA) AS conta,
+      RTRIM(B.AGENCIA) AS agencia,
+      RTRIM(CO.CARTEIRA) AS carteira,
       BB.STATUS_BOL AS status,
       BB.ID_BOLETO AS idBoleto,
-      BB.NOSSO_NUMERO AS nossoNumero,
-      E.GER_EMP_C_N_P_J_ AS cpfCnpjEmpresa
+      RTRIM(BB.NOSSO_NUMERO) AS nossoNumero,
+      RTRIM(E.GER_EMP_C_N_P_J_) AS cpfCnpjEmpresa
     FROM COR_CADASTRO_DE_DUPLICATAS D With (NoLock)
     INNER JOIN API_PIX_CADASTRO_DE_CONTA B With (NoLock) ON D.COR_CLI_BANCO = B.API_PIX_ID
     INNER JOIN API_BOLETO_CAD_CONVENIO CO With (NoLock) ON CO.IDCONTA = B.API_PIX_ID
@@ -815,7 +814,7 @@ app.post("/alterar_boleto", async (req, res) => {
       D.COR_DUP_ID AS duplicataId,
       D.COR_CLI_BANCO AS codBanco,
       D.COR_DUP_VALOR_DUPLICATA AS dupValor,
-      D.COR_DUP_TIPO AS dupTipo,
+      RTRIM(D.COR_DUP_TIPO) AS dupTipo,
       D.COR_DUP_DATA_EMISSAO AS dataEmissao,
       D.COR_DUP_DATA_VENCIMENTO AS dataVencimento,
       D.COR_DUP_DOCUMENTO AS numeroDocumento,
@@ -824,14 +823,14 @@ app.post("/alterar_boleto", async (req, res) => {
       D.COR_DUP_IDEMPRESA AS idEmpresa,
       D.COR_DUP_USU_CADASTROU AS usuCadastro,
       D.COR_DUP_DATA_PRORROGACAO AS dataProrrogacao,
-      B.CLIENTID AS clientId,
-      B.CLIENTSECRET AS clientSecret,
-      B.CAMINHO_CRT AS caminhoCrt,
+      RTRIM(B.CLIENTID) AS clientId,
+      RTRIM(B.CLIENTSECRET) AS clientSecret,
+      RTRIM(B.CAMINHO_CRT) AS caminhoCrt,
       B.SENHA_CRT AS senhaCrt,
       B.API_PIX_ID AS idConta,
-      B.CONTA AS conta,
-      B.AGENCIA AS agencia,
-      CO.CARTEIRA AS carteira,
+      RTRIM(B.CONTA) AS conta,
+      RTRIM(B.AGENCIA) AS agencia,
+      RTRIM(CO.CARTEIRA) AS carteira,
       CO.PROTESTO,
       CO.JUROS_DIA,
       CO.MODALIDADE_JUROS,
@@ -839,11 +838,11 @@ app.post("/alterar_boleto", async (req, res) => {
       CO.TIPO_MULTA,
       CO.DIAS_MULTA,
       CO.NOSSONUMERO,
-      BB.LINHA_DIGITAVEL,
-      BB.CODIGO_BARRA,
-      BB.NOSSO_NUMERO AS nossoNumero,
-      BB.ID_TRANSACAO AS txId,
-      E.GER_EMP_C_N_P_J_ AS cpfCnpjEmpresa
+      RTRIM(BB.LINHA_DIGITAVEL),
+      RTRIM(BB.CODIGO_BARRA),
+      RTRIM(BB.NOSSO_NUMERO) AS nossoNumero,
+      RTRIM(BB.ID_TRANSACAO) AS txId,
+      RTRIM(E.GER_EMP_C_N_P_J_) AS cpfCnpjEmpresa
     FROM COR_CADASTRO_DE_DUPLICATAS D With (NoLock)
     INNER JOIN API_PIX_CADASTRO_DE_CONTA B With (NoLock) ON D.COR_CLI_BANCO = B.API_PIX_ID
     INNER JOIN API_BOLETO_CAD_CONVENIO CO With (NoLock) ON CO.IDCONTA = B.API_PIX_ID
@@ -1355,7 +1354,7 @@ app.post("/consultar_liquidados", async (req, res) => {
 }); */
 
 function startServer(porta = process.env.PORT || 3000) {
-  let ambiente = process.env.DB_AMBIENTE == 1 ? "Homologação" : "Produção";
+  let ambiente = process.env.DB_AMBIENTE == 2 ? "Produção" : "Homologação";
   app.listen(porta, () => {
     console.log(`Servidor rodando na porta: ${porta}`);
     console.log(`Ambiente: ${ambiente}`);
