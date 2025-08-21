@@ -128,7 +128,8 @@ async function fetchDbData(id, pool) {
       nseqContrNegoc: String(numContrato ?? "0"),
       cidtfdProdCobr: String(carteira ?? "0"),
       cnegocCobr: String(
-        String(agencia ?? "") + String(conta ?? "").padStart(14, "0")
+        String(agencia ?? "").padStart(4, "0") +
+          String(conta ?? "").padStart(14, "0")
       ),
       codigoBanco: String(codBanco ?? "237"),
       filler: "",
@@ -142,7 +143,7 @@ async function fetchDbData(id, pool) {
       cindcdEconmMoeda: "00006",
       vnmnalTitloCobr: String(parseInt(dupValor * 100)),
       qmoedaNegocTitlo: "0",
-      cespceTitloCobr: dupTipoMap[dupTipo] || "99",
+      cespceTitloCobr: "02",
       cindcdAceitSacdo: "N",
       ctpoProteTitlo: protesto ? "2" : "0",
       ctpoPrzProte: protesto ? diasProtesto : "0",
