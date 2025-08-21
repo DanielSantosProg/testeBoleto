@@ -104,7 +104,7 @@ async function processarBoleto(id, pool) {
       // Define strings para o SQL
       const linhaDigitavelValue = (
         dados_bradesco_api.linhaDig10 || "0"
-      ).substring(0, 50);
+      ).substring(0, 60);
       const pixQrCodeValue = (
         dados_bradesco_api.wqrcdPdraoMercd || "0"
       ).substring(0, 500);
