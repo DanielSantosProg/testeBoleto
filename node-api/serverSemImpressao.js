@@ -657,17 +657,19 @@ app.post("/baixar_boleto", async (req, res) => {
     }
 
     // Formata os campos para inserir no payload
-    const cpfCnpjString = parseInt(data.cpfCnpjEmpresa.substring(0, 9));
-    let filialint = 0;
-    let controleInt = parseInt(data.cpfCnpjEmpresa.slice(-2));
+    const cpfCnpjString = String(data.cpfCnpjEmpresa.substring(0, 8));
+    let filialint = "0";
+    let controleInt = String(data.cpfCnpjEmpresa.slice(-2));
     let agencia = data.agencia ? String(data.agencia).substring(0, 4) : "0000";
     let conta = data.conta ? String(data.conta).substring(0, 7) : "0000000";
     const isCpf = data.cpfCnpjEmpresa.length == 11 ? true : false;
     if (!isCpf) {
-      filialint = parseInt(data.cpfCnpjEmpresa.substring(9, 12));
+      filialint = String(data.cpfCnpjEmpresa.substring(8, 12));
     }
 
-    const negociacaoString = parseInt(String(agencia + conta));
+    const negociacaoString = String(
+      String(agencia).padStart(4, "0") + String(conta).padStart(7, "0")
+    );
 
     const payload = {
       cpfCnpj: {
