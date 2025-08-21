@@ -118,7 +118,7 @@ async function fetchDbData(id, pool) {
       ctitloCobrCdent: String(nossoNumero ?? "0").padStart(11, "0"),
       registrarTitulo: "1",
       qtdDecurPrz: String(diasDecurso ?? "0"),
-      codUsuario: "APISERVIC", // Pode ser "APISERV"
+      codUsuario: "APISERV",
       nroCpfCnpjBenef: String(empresaCnpj ?? "").substring(0, 8),
       filCpfCnpjBenef: String(empresaCnpj ?? "").substring(8, 12),
       digCpfCnpjBenef: String(empresaCnpj ?? "").slice(-2),
@@ -159,7 +159,7 @@ async function fetchDbData(id, pool) {
         modalidadeJuros === "V"
           ? String(Math.round((juros ?? 0) * 100)).padStart(3, "0")
           : "0",
-      qdiaInicJuro: "01",
+      qdiaInicJuro: juros ? "1" : "0",
       pmultaAplicVcto: tipoMulta === "P" ? Number(multa ?? 0).toFixed(5) : "0",
       vmultaAtrsoPgto:
         tipoMulta === "V"

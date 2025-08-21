@@ -142,7 +142,11 @@ async function processarBoleto(id, pool) {
         .input("pixQrCode", sql.VarChar(500), pixQrCodeValue)
         .input("numBoleto", sql.Int, dados_bradesco_api.snumero10)
         .input("idTransacao", sql.VarChar(50), txid)
-        .input("statusBol", sql.Int, dados_bradesco_api.codStatus10).query(`
+        .input(
+          "statusBol",
+          sql.VarChar(50),
+          String(dados_bradesco_api.codStatus10)
+        ).query(`
         INSERT INTO COR_BOLETO_BANCARIO (
           DATA_VENC, N_DOC, DATA_PROCESS, VALOR, LINHA_DIGITAVEL, CODIGO_BARRA,
           NOSSO_NUMERO, ID_DUPLICATA, ANO_BOLETO, ID_CONTA_CORRENTE, ATIVO,
@@ -534,7 +538,7 @@ app.post("/consulta_boleto", async (req, res) => {
       await request9
         .input("dataMovimento", sql.DateTime, dataMov)
         .input("dataConsulta", sql.DateTime, new Date())
-        .input("codStatus", sql.Int, resultado.titulo.codStatus)
+        .input("codStatus", sql.VarChar(50), String(resultado.titulo.codStatus))
         .input("id", sql.Int, id).query(`
         UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus, DATA_CONSULTA = @dataConsulta WHERE ID_DUPLICATA = @id
       `);
@@ -708,7 +712,7 @@ app.post("/baixar_boleto", async (req, res) => {
       await request
         .input("dataMovimento", sql.DateTime, new Date())
         .input("dataConsulta", sql.DateTime, new Date())
-        .input("codStatus", sql.Int, resultado.dados.status)
+        .input("codStatus", sql.VarChar(50), String(resultado.dados.status))
         .input("id", sql.Int, id).query(`
           UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus, DATA_CONSULTA = @dataConsulta, ID_DUPLICATA = NULL WHERE ID_DUPLICATA = @id
         `);
