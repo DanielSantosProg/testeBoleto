@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 // Imports dos arquivos de services
 const { requisicaoBradesco } = require("./services/gerarBoletoService");
 const {
@@ -471,17 +471,19 @@ app.post("/consulta_boleto", async (req, res) => {
     }
 
     // Formata os campos para inserir no payload
-    const cpfCnpjString = parseInt(data.cpfCnpjEmpresa.substring(0, 9));
-    let filialint = 0;
-    let controleInt = parseInt(data.cpfCnpjEmpresa.slice(-2));
+    const cpfCnpjString = String(data.cpfCnpjEmpresa.substring(0, 8));
+    let filialint = "0";
+    let controleInt = String(data.cpfCnpjEmpresa.slice(-2));
     let agencia = data.agencia ? String(data.agencia).substring(0, 4) : "0000";
     let conta = data.conta ? String(data.conta).substring(0, 7) : "0000000";
     const isCpf = data.cpfCnpjEmpresa.length == 11 ? true : false;
     if (!isCpf) {
-      filialint = parseInt(data.cpfCnpjEmpresa.substring(9, 12));
+      filialint = String(data.cpfCnpjEmpresa.substring(8, 12));
     }
 
-    const negociacaoString = parseInt(String(agencia + conta));
+    const negociacaoString = String(
+      String(agencia).padStart(4, "0") + String(conta).padStart(7, "0")
+    );
 
     const payload = {
       cpfCnpj: {
@@ -520,11 +522,11 @@ app.post("/consulta_boleto", async (req, res) => {
     ];
 
     // Faz update no registro do boleto no banco após a consulta
-    if (resultado?.titulo?.codStatus != data.status) {
+    if (resultado?.data?.titulo?.codStatus != data.status) {
       movimento = true;
 
       for (const path of camposDatas) {
-        const val = getCampo(resultado.titulo, path);
+        const val = getCampo(resultado.data.titulo, path);
         if (val && val != 0 && val !== "") {
           const dateObj = parseDateFromDDMMYYYY(val);
           if (dateObj && !isNaN(dateObj)) {
@@ -536,9 +538,13 @@ app.post("/consulta_boleto", async (req, res) => {
 
       const request9 = new sql.Request();
       await request9
-        .input("dataMovimento", sql.DateTime, dataMov)
-        .input("dataConsulta", sql.DateTime, new Date())
-        .input("codStatus", sql.VarChar(50), String(resultado.titulo.codStatus))
+        .input("dataMovimento", sql.Date, dataMov)
+        .input("dataConsulta", sql.Date, new Date())
+        .input(
+          "codStatus",
+          sql.VarChar(50),
+          String(resultado.data.titulo.codStatus)
+        )
         .input("id", sql.Int, id).query(`
         UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus, DATA_CONSULTA = @dataConsulta WHERE ID_DUPLICATA = @id
       `);
@@ -549,17 +555,21 @@ app.post("/consulta_boleto", async (req, res) => {
     if (movimento) {
       return res.json({
         duplicata: id,
-        dataMovimento: dataMov,
-        status: resultado.titulo.codStatus,
-        resultado: resultado,
+        dataMovimento: dataMov.toLocaleDateString("pt-BR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }),
+        status: resultado.data.titulo.codStatus,
+        resultado: resultado.data,
         error: null,
       });
     } else {
       return res.json({
         duplicata: id,
         dataMovimento: null,
-        status: resultado?.titulo?.codStatus,
-        resultado: resultado,
+        status: resultado?.data?.titulo?.codStatus,
+        resultado: resultado.data,
         error: null,
       });
     }
@@ -716,7 +726,7 @@ app.post("/baixar_boleto", async (req, res) => {
         .input("dataConsulta", sql.DateTime, new Date())
         .input("codStatus", sql.VarChar(50), String(resultado.dados.status))
         .input("id", sql.Int, id).query(`
-          UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = @codStatus, DATA_CONSULTA = @dataConsulta, ID_DUPLICATA = NULL WHERE ID_DUPLICATA = @id
+          UPDATE COR_BOLETO_BANCARIO SET DATA_MOVIMENTO = @dataMovimento, STATUS_BOL = ISNULL((SELECT TOP 1 COD_STATUS FROM STATUS_BOLETO_COBRANCA With (NoLock) WHERE BANCO = 237 AND CANCELAMENTO = 1), @codStatus), DATA_CONSULTA = @dataConsulta, ID_DUPLICATA = NULL WHERE ID_DUPLICATA = @id
         `);
 
       // Atualiza o COR_CADASTRO_DE_DUPLICATAS
@@ -864,17 +874,19 @@ app.post("/alterar_boleto", async (req, res) => {
     }
 
     // Formata os campos para inserir no payload
-    const cpfCnpjString = parseInt(data.cpfCnpjEmpresa.substring(0, 9));
-    let filialint = 0;
-    let controleInt = parseInt(data.cpfCnpjEmpresa.slice(-2));
+    const cpfCnpjString = String(data.cpfCnpjEmpresa.substring(0, 8));
+    let filialint = "0";
+    let controleInt = String(data.cpfCnpjEmpresa.slice(-2));
     let agencia = data.agencia ? String(data.agencia).substring(0, 4) : "0000";
     let conta = data.conta ? String(data.conta).substring(0, 7) : "0000000";
-    const isCpf = data.cpfCnpjEmpresa.length == 11;
+    const isCpf = data.cpfCnpjEmpresa.length == 11 ? true : false;
     if (!isCpf) {
-      filialint = parseInt(data.cpfCnpjEmpresa.substring(9, 12));
+      filialint = String(data.cpfCnpjEmpresa.substring(8, 12));
     }
 
-    const negociacaoString = parseInt(String(agencia + conta));
+    const negociacaoString = String(
+      String(agencia).padStart(4, "0") + String(conta).padStart(7, "0")
+    );
 
     const valorvar = 1000;
     const dataProrrogacao = data.dataProrrogacao
@@ -897,7 +909,7 @@ app.post("/alterar_boleto", async (req, res) => {
         dataEmissao: data.dataEmissao
           ? parseInt(formatDate(data.dataEmissao))
           : 0,
-        especie: (dupTipoMap[data.dupTipo] || "99").toString(),
+        especie: "02",
         dataVencimento: dataProrrogacao,
         codVencimento: 0,
         codInstrucaoProtesto: 0,
@@ -918,7 +930,6 @@ app.post("/alterar_boleto", async (req, res) => {
         valorTerceiroDesc: 0,
         codTerceiroDesc: 0,
         acaoTerceiroDesc: 0,
-        controleParticipante: "11111111111111111",
         idAvisoSacado: "S",
         diasAposVencidoJuros: 0,
         valorJuros: 0,

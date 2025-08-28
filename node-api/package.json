@@ -5,8 +5,6 @@
   "main": "indexSemImpressao.js",
   "scripts": {
     "start": "node indexSemImpressao.js",
-    "start2": "node index.js",
-    "gerar-boletos": "node requests/gerarPdf.js",
     "gerar-boletos-dados": "node requests/gerarBoletos.js",
     "consultar-boleto": "node requests/consultarBoleto.js",
     "baixar-boleto": "node requests/baixarBoleto.js",

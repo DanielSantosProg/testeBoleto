@@ -1,4 +1,4 @@
-const fs = require("fs");
+﻿const fs = require("fs");
 const https = require("https");
 const path = require("path");
 const axios = require("axios");
@@ -117,7 +117,7 @@ async function consultarBoleto(
       httpsAgent,
     });
 
-    return response.data;
+    return response;
   } catch (err) {
     console.error("Erro ao fazer consulta: ", err.message);
     throw err;

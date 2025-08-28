@@ -1,10 +1,7 @@
-const { spawn } = require("child_process");
-const sql = require("mssql");
 const axios = require("axios");
 const https = require("https");
 const fs = require("fs");
 const getToken = require("../gerarToken");
-const path = require("path");
 
 // Requere o arquivo.env para a conexão com o banco de dados
 require("dotenv").config();
@@ -13,150 +10,6 @@ const API_URL =
   process.env.DB_AMBIENTE == 2
     ? "https://openapi.bradesco.com.br/boleto-hibrido/cobranca-registro/v1/gerarBoleto"
     : "https://openapisandbox.prebanco.com.br/boleto-hibrido/cobranca-registro/v1/gerarBoleto";
-
-async function sendRequest(token, payload, CAMINHO_CRT, SENHA_CRT) {
-  const agent = new https.Agent({
-    pfx: fs.readFileSync(CAMINHO_CRT),
-    passphrase: SENHA_CRT,
-  });
-
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
-
-  try {
-    console.log("Enviando requisição POST para:", API_URL);
-
-    const response = await axios.post(API_URL, payload, {
-      httpsAgent: agent,
-      headers: headers,
-      responseType: "json",
-    });
-
-    const resultado = response.data;
-
-    if (!resultado || Object.keys(resultado).length === 0) {
-      console.log("Verifique os dados do boleto.");
-      return;
-    }
-
-    if (resultado.error) {
-      console.error(`Erro no boleto ID ${resultado.id}: ${resultado.error}`);
-      return resultado;
-    }
-
-    return resultado;
-  } catch (error) {
-    if (error.response) {
-      const status = error.response.status;
-      const data = error.response.data;
-
-      console.error("Erro na API:", status);
-      console.error(data);
-
-      // Retorna uma mensagem detalhada para o retry identificar
-      return {
-        error: `Erro na requisição para a API do Bradesco: ${status} - ${
-          typeof data === "string" ? data : JSON.stringify(data)
-        }`,
-      };
-    } else {
-      console.error("Erro inesperado:", error.message);
-      return { error: error.message || "Erro desconhecido" };
-    }
-  }
-}
-async function gerarBoleto(
-  payload,
-  CAMINHO_CRT,
-  SENHA_CRT,
-  CLIENTID,
-  CLIENTSECRET,
-  DIG_CONTA,
-  DIG_AGENCIA
-) {
-  const token = await getToken(CAMINHO_CRT, SENHA_CRT, CLIENTID, CLIENTSECRET);
-  if (!token) throw new Error("Erro ao obter token");
-
-  const dados_bradesco = await sendRequest(
-    token,
-    payload,
-    CAMINHO_CRT,
-    SENHA_CRT
-  );
-
-  return new Promise((resolve, reject) => {
-    const python = spawn("python", [
-      path.join(__dirname, "..", "python-boleto", "cli.py"),
-    ]);
-    const dados = {
-      dados_bradesco: dados_bradesco,
-      payload,
-      token,
-      pfxPath: CAMINHO_CRT,
-      senha: SENHA_CRT,
-      dig_conta: DIG_CONTA,
-      dig_agencia: DIG_AGENCIA,
-    };
-
-    let stdout = "",
-      stderr = "";
-
-    python.stdin.write(JSON.stringify(dados));
-    python.stdin.end();
-
-    python.stdout.on("data", (data) => {
-      stdout += data.toString();
-    });
-
-    python.on("error", (err) => {
-      reject(new Error(`Falha ao iniciar processo Python: ${err.message}`));
-    });
-
-    python.stderr.on("data", (data) => {
-      stderr += data.toString();
-    });
-
-    python.on("close", (code) => {
-      try {
-        const parsed = JSON.parse(stdout);
-
-        if (parsed.error) {
-          if (dados_bradesco) {
-            const nossoNumeroFull = gerarNossoNumeroFull(dados_bradesco);
-
-            const decoded = decodeCodBar(
-              dados_bradesco.codBarras10,
-              ebcdicToNum
-            );
-            return resolve({
-              error: parsed.error,
-              status: "Erro",
-              cod_barras: decoded,
-              nosso_numero_full: nossoNumeroFull,
-              dados_bradesco_api: dados_bradesco,
-            });
-          }
-          // Se o JSON tem a chave error, rejeita com essa mensagem
-          return reject(new Error(parsed.error));
-        }
-
-        if (code !== 0) {
-          return reject(
-            new Error(`Processo Python finalizado com código ${code}`)
-          );
-        }
-
-        resolve(parsed);
-      } catch (err) {
-        reject(
-          new Error("Erro ao interpretar resposta do Python: " + err.message)
-        );
-      }
-    });
-  });
-}
 
 function calcularDigitoVerificador(carteira, nossoNumero) {
   const num = carteira + nossoNumero;
@@ -399,4 +252,4 @@ async function requisicaoBradesco(
   }
 }
 
-module.exports = { gerarBoleto, requisicaoBradesco };
+module.exports = { requisicaoBradesco };

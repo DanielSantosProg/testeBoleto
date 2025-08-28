@@ -1,4 +1,4 @@
-const fs = require("fs");
+﻿const fs = require("fs");
 const https = require("https");
 const path = require("path");
 const axios = require("axios");
@@ -90,7 +90,7 @@ async function alterarBoleto(
   try {
     const url =
       process.env.DB_AMBIENTE == 2
-        ? "https://openapi.bradesco.com.br/boleto/cobranca-altera/v1/alterar"
+        ? "https://openapi.bradesco.com.br/boleto-hibrido/cobranca-alteracao/v1/alteraBoletoConsulta"
         : "https://openapisandbox.prebanco.com.br/boleto-hibrido/cobranca-alteracao/v1/alteraBoletoConsulta";
 
     const token = await getToken(
@@ -110,7 +110,6 @@ async function alterarBoleto(
       pfx: fs.readFileSync(path.resolve(CAMINHO_CRT)),
       passphrase: SENHA_CRT,
     });
-
     const response = await axios.post(url, payload, {
       headers: {
         Authorization: token,
