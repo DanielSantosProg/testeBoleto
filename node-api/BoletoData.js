@@ -117,26 +117,28 @@ async function fetchDbData(id, pool) {
     const payload = {
       ctitloCobrCdent: String(nossoNumero ?? "0").padStart(11, "0"),
       registrarTitulo: "1",
-      qtdDecurPrz: String(diasDecurso ?? "0"),
+      qtdDecurPrz: String(
+        diasDecurso && diasDecurso <= 365 ? diasDecurso : "0"
+      ),
       codUsuario: "APISERV",
       nroCpfCnpjBenef: String(empresaCnpj ?? "").substring(0, 8),
       filCpfCnpjBenef: String(empresaCnpj ?? "").substring(8, 12),
       digCpfCnpjBenef: String(empresaCnpj ?? "").slice(-2),
       tipoAcesso: "2",
-      cpssoaJuridContr: String(numContrato ?? "0"),
+      cpssoaJuridContr: String(numContrato ?? "0").substring(0, 10),
       ctpoContrNegoc: "000",
-      nseqContrNegoc: String(numContrato ?? "0"),
-      cidtfdProdCobr: String(carteira ?? "0"),
+      nseqContrNegoc: String(numContrato ?? "0").substring(0, 10),
+      cidtfdProdCobr: String(carteira ?? "0").substring(0, 2),
       cnegocCobr: String(
         String(agencia ?? "").padStart(4, "0") +
           String(conta ?? "").padStart(14, "0")
-      ),
-      codigoBanco: String(codBanco ?? "237"),
+      ).substring(0, 18),
+      codigoBanco: "237",
       filler: "",
-      eNseqContrNegoc: String(numContrato ?? "0"),
+      eNseqContrNegoc: String(numContrato ?? "0").substring(0, 10),
       tipoRegistro: protesto ? "002" : "001",
       cprodtServcOper: "00000000",
-      ctitloCliCdent: String(dupDocumento ?? "0"),
+      ctitloCliCdent: String(dupDocumento ?? "0").substring(0, 25),
       demisTitloCobr: formatDate(dataEmissao),
       dvctoTitloCobr: formatDate(dataVencimento),
       cidtfdTpoVcto: "0",
